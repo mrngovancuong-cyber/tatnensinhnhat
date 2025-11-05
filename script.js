@@ -24,7 +24,6 @@ const createHandLandmarker = async () => {
         const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/wasm");
         handLandmarker = await HandLandmarker.createFromOptions(vision, {
             baseOptions: {
-                // LỖI ĐÁNH MÁY "hand_marker" ĐÃ ĐƯỢC SỬA THÀNH "hand_landmarker" Ở ĐÂY
                 modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
                 delegate: "GPU"
             },
@@ -43,10 +42,12 @@ createHandLandmarker();
 
 navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
     video.srcObject = stream;
+    // Lắng nghe sự kiện khi video đã sẵn sàng để lấy kích thước
     video.addEventListener("loadeddata", predictWebcam);
 });
 
 function drawHandConnectors(landmarks) {
+    // ... (Không thay đổi)
     const connectors = [
         [0, 1], [1, 2], [2, 3], [3, 4], // Thumb
         [0, 5], [5, 6], [6, 7], [7, 8], // Index
@@ -67,6 +68,7 @@ function drawHandConnectors(landmarks) {
 }
 
 function drawHandLandmarks(landmarks) {
+    // ... (Không thay đổi)
     canvasCtx.fillStyle = 'rgba(255, 0, 0, 0.7)';
     landmarks.forEach(point => {
         canvasCtx.beginPath();
@@ -76,10 +78,9 @@ function drawHandLandmarks(landmarks) {
 }
 
 function predictWebcam() {
-    if (video.readyState < 2) {
-        window.requestAnimationFrame(predictWebcam);
-        return;
-    }
+    // Đặt kích thước canvas mỗi khung hình để đảm bảo nó luôn đúng
+    canvasElement.width = video.videoWidth;
+    canvasElement.height = video.videoHeight;
 
     if (lastVideoTime !== video.currentTime && handLandmarker) {
         lastVideoTime = video.currentTime;
@@ -101,6 +102,7 @@ function predictWebcam() {
 }
 
 function checkPinch(landmarks) {
+    // ... (Không thay đổi)
     const thumbTip = landmarks[4];
     const indexTip = landmarks[8];
     const distance = Math.sqrt(
@@ -129,8 +131,9 @@ function checkPinch(landmarks) {
 function spawnCandle() {
     if (candles.filter(c => c.state === 'lit').length < 10) {
         candles.push({
-            x: Math.random() * (video.videoWidth - 60) + 30,
-            y: Math.random() * (video.videoHeight - 60) + 30,
+            // SỬA LỖI: Luôn sử dụng kích thước của canvas, vì nó đã được đồng bộ
+            x: Math.random() * (canvasElement.width - 60) + 30,
+            y: Math.random() * (canvasElement.height - 60) + 30,
             state: 'lit',
             snuffedTime: 0
         });
@@ -138,6 +141,7 @@ function spawnCandle() {
 }
 
 function drawCandles() {
+    // ... (Không thay đổi)
     canvasCtx.font = "40px serif";
     const now = Date.now();
     candles.forEach(candle => {
@@ -155,9 +159,15 @@ function drawCandles() {
     candles = candles.filter(candle => candle.state === 'lit' || (now - candle.snuffedTime < 1000));
 }
 
+// ==========================================================
+// ĐÂY LÀ PHẦN SỬA LỖI QUAN TRỌNG NHẤT
+// ==========================================================
 function startGame() {
+    // FIX QUAN TRỌNG NHẤT: Đặt kích thước canvas ngay khi game bắt đầu.
+    // Điều này đảm bảo canvas có kích thước đúng TRƯỚC KHI nến đầu tiên được tạo ra.
     canvasElement.width = video.videoWidth;
     canvasElement.height = video.videoHeight;
+
     gameIsRunning = true;
     score = 0;
     timer = 60;
@@ -174,8 +184,10 @@ function startGame() {
         if (timer <= 0) endGame();
     }, 1000);
 }
+// ==========================================================
 
 function endGame() {
+    // ... (Không thay đổi)
     gameIsRunning = false;
     clearInterval(candleInterval);
     clearInterval(timerInterval);
