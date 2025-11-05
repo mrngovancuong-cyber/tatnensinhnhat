@@ -1,4 +1,5 @@
-const { HandLandmarker, FilesetResolver } = window.mediapipe.tasks.vision;
+// SỬ DỤNG CHÍNH XÁC DÒNG IMPORT MÀ BẠN ĐÃ ĐỀ XUẤT
+import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/vision_bundle.mjs";
 
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
@@ -20,10 +21,10 @@ let timerInterval, candleInterval;
 
 const createHandLandmarker = async () => {
     try {
-        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm");
+        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/wasm");
         handLandmarker = await HandLandmarker.createFromOptions(vision, {
             baseOptions: {
-                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_marker/hand_marker/float16/1/hand_marker.task`,
                 delegate: "GPU"
             },
             runningMode: "VIDEO",
@@ -74,8 +75,10 @@ function drawHandLandmarks(landmarks) {
 }
 
 function predictWebcam() {
-    canvasElement.width = video.videoWidth;
-    canvasElement.height = video.videoHeight;
+    if (video.readyState < 2) {
+        window.requestAnimationFrame(predictWebcam);
+        return;
+    }
 
     if (lastVideoTime !== video.currentTime && handLandmarker) {
         lastVideoTime = video.currentTime;
@@ -125,8 +128,8 @@ function checkPinch(landmarks) {
 function spawnCandle() {
     if (candles.filter(c => c.state === 'lit').length < 10) {
         candles.push({
-            x: Math.random() * (canvasElement.width - 60) + 30,
-            y: Math.random() * (canvasElement.height - 60) + 30,
+            x: Math.random() * (video.videoWidth - 60) + 30,
+            y: Math.random() * (video.videoHeight - 60) + 30,
             state: 'lit',
             snuffedTime: 0
         });
@@ -152,6 +155,8 @@ function drawCandles() {
 }
 
 function startGame() {
+    canvasElement.width = video.videoWidth;
+    canvasElement.height = video.videoHeight;
     gameIsRunning = true;
     score = 0;
     timer = 60;
