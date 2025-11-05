@@ -26,14 +26,26 @@ let candles = [];
 
 // KHỞI TẠO VÀ TẢI MÔ HÌNH CỦA FACE-API.JS
 async function initialize() {
-    loadingElement.innerText = "Đang tải mô hình AI...";
-    // Tải đồng thời 2 mô hình: 1 để tìm mặt, 1 để tìm 68 điểm mốc
-    await Promise.all([
+    loadingElement.innerText = "Đang tải mô hình AI và hình ảnh...";
+    
+    // Tải đồng thời 2 mô hình AI
+    const modelPromises = [
         faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
         faceapi.nets.faceLandmark68Net.loadFromUri('/models')
-    ]);
-    console.log("AI Models Loaded!");
+    ];
 
+    // ==========================================================
+    // THAY ĐỔI QUAN TRỌNG: TẠO PROMISE CHO VIỆC TẢI ẢNH
+    // ==========================================================
+    const imagePromises = [hatImage.decode()];
+    candleImages.forEach(img => imagePromises.push(img.decode()));
+
+    // Đợi TẤT CẢ mọi thứ (cả AI và ảnh) tải xong
+    await Promise.all([...modelPromises, ...imagePromises]);
+    
+    console.log("SUCCESS: All models and images are loaded!");
+
+    // Lấy camera sau khi mọi thứ đã sẵn sàng
     const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
     video.srcObject = stream;
     
@@ -47,7 +59,7 @@ initialize();
 
 // VÒNG LẶP GAME CHÍNH VÀ NHẬN DIỆN
 async function gameLoop() {
-    if (!gameActive) return; // Dừng vòng lặp nếu game chưa bắt đầu
+    if (!gameActive) return;
 
     if (canvasElement.width !== video.videoWidth) {
         canvasElement.width = video.videoWidth;
@@ -56,15 +68,13 @@ async function gameLoop() {
     
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-    // Yêu cầu AI tìm khuôn mặt VÀ các điểm mốc
-    const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+    const detectorOptions = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 });
+    const detections = await faceapi.detectAllFaces(video, detectorOptions).withFaceLandmarks();
 
     if (detections && detections.length > 0) {
-        const face = detections[0]; // Chỉ lấy khuôn mặt đầu tiên
+        const face = detections[0];
         const landmarks = face.landmarks;
         const box = face.detection.box;
-
-        // Lấy tọa độ chóp mũi (điểm thứ 31 trong mảng 68 điểm)
         const noseTip = landmarks.positions[30]; 
         
         handleCollisions(noseTip);
@@ -78,15 +88,16 @@ async function gameLoop() {
 // CÁC HÀM VẼ
 function drawFaceElements(box, noseTip) {
     const flippedX = canvasElement.width - box.x - box.width;
+    canvasCtx.strokeStyle = '#00FF00';
+    canvasCtx.lineWidth = 4;
+    canvasCtx.strokeRect(flippedX, box.y, box.width, box.height);
 
-    // Vẽ nón
     const hatWidth = box.width * 1.5;
     const hatHeight = hatImage.height * (hatWidth / hatImage.width);
     const hatX = flippedX - (hatWidth - box.width) / 2;
     const hatY = box.y - hatHeight * 0.9;
     canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
 
-    // Vẽ 1 chấm đỏ ở chóp mũi để người chơi biết vị trí "con trỏ"
     const flippedNoseX = canvasElement.width - noseTip.x;
     canvasCtx.beginPath();
     canvasCtx.arc(flippedNoseX, noseTip.y, 5, 0, 2 * Math.PI);
@@ -103,10 +114,7 @@ function drawCandles() {
 // LOGIC VA CHẠM BẰNG MŨI
 function handleCollisions(noseTip) {
     candles.forEach((candle, index) => {
-        // Lật ngược tọa độ X của mũi để so sánh với tọa độ của nến
         const flippedNoseX = canvasElement.width - noseTip.x;
-
-        // Kiểm tra xem điểm (mũi) có nằm trong hình chữ nhật (nến) không
         if (flippedNoseX > candle.x && flippedNoseX < candle.x + candle.width &&
             noseTip.y > candle.y && noseTip.y < candle.y + candle.height) {
             
@@ -130,7 +138,7 @@ function spawnCandle() {
 function startGame() {
     score = 0; timeLeft = 60; candles = [];
     scoreElement.innerText = score; timerElement.innerText = timeLeft;
-    gameActive = true; // Kích hoạt vòng lặp game
+    gameActive = true;
     
     startButton.style.display = 'none';
     finalMessageElement.classList.add('hidden');
@@ -147,12 +155,11 @@ function startGame() {
         if (gameActive) spawnCandle();
     }, 2000);
 
-    // Bắt đầu vòng lặp
     requestAnimationFrame(gameLoop);
 }
 
 function endGame() {
-    gameActive = false; // Dừng vòng lặp game
+    gameActive = false;
     clearInterval(gameInterval);
     clearInterval(candleInterval);
     finalScoreElement.innerText = score;
