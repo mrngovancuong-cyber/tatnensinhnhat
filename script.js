@@ -1,3 +1,4 @@
+// Import thư viện AI với phiên bản ổn định
 import { FaceDetector, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/vision_bundle.mjs";
 
 const video = document.getElementById("webcam");
@@ -35,7 +36,7 @@ const createFaceDetector = async () => {
 
 async function initialize() {
     try {
-        const hatPromise = loadImage('https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/birthdayhat.png');
+        const hatPromise = loadImage('https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/birthday_hat.png');
         const detectorPromise = createFaceDetector();
         await Promise.all([hatPromise, detectorPromise]);
         console.log("SUCCESS: AI and Hat Image are ready!");
@@ -60,16 +61,18 @@ function predictWebcam() {
 
     if (isDetecting && faceDetector) {
         faceDetector.detectForVideo(video, performance.now(), (result) => {
-            // ==========================================================
-            // ĐÂY LÀ DÒNG GỠ LỖI QUAN TRỌNG NHẤT
-            console.log(result); // In ra kết quả AI trả về
-            // ==========================================================
-            
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
             if (result.detections && result.detections.length > 0) {
                 const face = result.detections[0].boundingBox;
-                drawHat(face);
+                
+                // ==========================================================
+                // ĐÂY LÀ PHẦN NÂNG CẤP ĐỂ BIẾT AI CÓ HOẠT ĐỘNG KHÔNG
+                // ==========================================================
+                drawFaceBox(face); // Vẽ khung xung quanh mặt
+                // ==========================================================
+
+                drawHat(face); // Vẽ nón
             }
         });
     }
@@ -77,12 +80,31 @@ function predictWebcam() {
     window.requestAnimationFrame(predictWebcam);
 }
 
+
+// ==========================================================
+// HÀM MỚI ĐỂ VẼ KHUNG CHỮ NHẬT
+// ==========================================================
+function drawFaceBox(face) {
+    canvasCtx.strokeStyle = '#00FF00'; // Màu xanh lá cây sáng
+    canvasCtx.lineWidth = 4; // Độ dày của đường kẻ
+
+    // Tính toán tọa độ đã lật ngược
+    const x = (1 - face.originX - face.width) * canvasElement.width;
+    const y = face.originY * canvasElement.height;
+    const width = face.width * canvasElement.width;
+    const height = face.height * canvasElement.height;
+
+    canvasCtx.strokeRect(x, y, width, height);
+}
+// ==========================================================
+
+
 function drawHat(face) {
     const hatWidth = face.width * 1.5;
     const hatHeight = hatImage.height * (hatWidth / hatImage.width);
     const hatX = (1 - (face.originX + face.width / 2)) * canvasElement.width - (hatWidth / 2);
     const hatY = face.originY * canvasElement.height - hatHeight * 0.9;
-    canvasCtx.drawImage(hatImage, hat_x, hatY, hatWidth, hatHeight);
+    canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
 }
 
 function startGame() {
