@@ -39,12 +39,15 @@ async function initialize() {
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm");
 
     faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
-        baseOptions: { modelAssetPath: `https://storage.googleapis.com/medipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`, delegate: "CPU" },
+        baseOptions: {
+            // ==========================================================
+            // THAY ĐỔI QUAN TRỌNG NHẤT: SỬ DỤNG FILE MÔ HÌNH CỤC BỘ
+            // ==========================================================
+            modelAssetPath: `/models/face_landmarker.task`,
+            delegate: "CPU"
+        },
         runningMode: "VIDEO",
         numFaces: 1,
-        // ==========================================================
-        // THAY ĐỔI QUAN TRỌNG: YÊU CẦU AI "DỄ TÍNH" HƠN
-        // ==========================================================
         minFaceDetectionConfidence: 0.5,
     });
     
@@ -65,51 +68,39 @@ initialize().catch(err => {
     loadingElement.innerText = "Lỗi! Vui lòng tải lại trang.";
 });
 
-// ==========================================================
-// GAME LOOP
-// ==========================================================
+// --- CÁC HÀM CÒN LẠI GIỮ NGUYÊN NHƯ TRƯỚC ---
+// (Bạn có thể copy paste toàn bộ phần còn lại từ file trước, hoặc dùng luôn file này)
+
 let lastVideoTime = -1;
 function gameLoop() {
     if (video.readyState < 2) {
         window.requestAnimationFrame(gameLoop);
         return;
     }
-
     if (canvasElement.width !== video.videoWidth) {
         canvasElement.width = video.videoWidth;
         canvasElement.height = video.videoHeight;
     }
-
     if (video.currentTime !== lastVideoTime) {
         lastVideoTime = video.currentTime;
         faceLandmarker.detectForVideo(video, performance.now(), (result) => {
             lastFaceResult = result;
-            // Dòng chẩn đoán: In kết quả ra để xem
-            // console.log(result.faceLandmarks); 
         });
     }
-
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
     if (lastFaceResult && lastFaceResult.faceLandmarks.length > 0) {
         const landmarks = lastFaceResult.faceLandmarks[0];
         const { faceBox, isBlowing } = analyzeFace(landmarks);
-        
         drawHat(faceBox);
         drawFaceBox(faceBox, isBlowing);
-        
         if (gameActive) {
             handleCollisions(faceBox, isBlowing);
         }
     }
-    
     drawCandles();
     window.requestAnimationFrame(gameLoop);
 }
 
-// ==========================================================
-// ANALYSIS AND DRAWING FUNCTIONS
-// ==========================================================
 function analyzeFace(landmarks) {
     let minX = 1, maxX = 0, minY = 1, maxY = 0;
     for (const point of landmarks) {
@@ -118,20 +109,15 @@ function analyzeFace(landmarks) {
         minY = Math.min(minY, point.y);
         maxY = Math.max(maxY, point.y);
     }
-    
     const faceBox = {
-        x: minX * canvasElement.width,
-        y: minY * canvasElement.height,
-        width: (maxX - minX) * canvasElement.width,
-        height: (maxY - minY) * canvasElement.height
+        x: minX * canvasElement.width, y: minY * canvasElement.height,
+        width: (maxX - minX) * canvasElement.width, height: (maxY - minY) * canvasElement.height
     };
-
     const topLip = landmarks[13];
     const bottomLip = landmarks[14];
     const mouthOpenRatio = Math.abs(topLip.y - bottomLip.y);
     const BLOW_THRESHOLD = 0.035; 
     const isBlowing = mouthOpenRatio > BLOW_THRESHOLD;
-
     return { faceBox, isBlowing };
 }
 
@@ -157,9 +143,6 @@ function drawCandles() {
     });
 }
 
-// ==========================================================
-// GAME LOGIC
-// ==========================================================
 function handleCollisions(faceBox, isBlowing) {
     candles.forEach((candle, index) => {
         if (isColliding(faceBox, candle) && isBlowing) {
@@ -181,9 +164,7 @@ function isColliding(rect1, rect2) {
 }
 
 function spawnCandle() {
-    if (candles.length > 2) {
-        candles.shift();
-    }
+    if (candles.length > 2) { candles.shift(); }
     const size = 80;
     const x = Math.random() * (canvasElement.width - size - 100) + 50;
     const y = Math.random() * (canvasElement.height - size - 100) + 50;
@@ -191,9 +172,6 @@ function spawnCandle() {
     candles.push({ x, y, width: size, height: size, image: randomImage });
 }
 
-// ==========================================================
-// GAME STATE MANAGEMENT
-// ==========================================================
 function startGame() {
     score = 0; timeLeft = 60; candles = [];
     scoreElement.innerText = score; timerElement.innerText = timeLeft;
