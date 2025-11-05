@@ -1,4 +1,4 @@
-import { FaceLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/vision_bundle.mjs";
+import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@medipe/tasks-vision@0.10.9/vision_bundle.mjs";
 
 // --- DOM ELEMENTS ---
 const video = document.getElementById("webcam");
@@ -36,12 +36,16 @@ let candles = [];
 // ==========================================================
 async function initialize() {
     loadingElement.innerText = "Đang tải mô hình AI...";
-    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm");
+    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@medipe/tasks-vision@0.10.9/wasm");
 
     faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
-        baseOptions: { modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`, delegate: "CPU" },
+        baseOptions: { modelAssetPath: `https://storage.googleapis.com/medipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`, delegate: "CPU" },
         runningMode: "VIDEO",
         numFaces: 1,
+        // ==========================================================
+        // THAY ĐỔI QUAN TRỌNG: YÊU CẦU AI "DỄ TÍNH" HƠN
+        // ==========================================================
+        minFaceDetectionConfidence: 0.5,
     });
     
     const imagePromises = [hatImage.decode(), ...candleImages.map(img => img.decode())];
@@ -80,6 +84,8 @@ function gameLoop() {
         lastVideoTime = video.currentTime;
         faceLandmarker.detectForVideo(video, performance.now(), (result) => {
             lastFaceResult = result;
+            // Dòng chẩn đoán: In kết quả ra để xem
+            // console.log(result.faceLandmarks); 
         });
     }
 
@@ -87,12 +93,10 @@ function gameLoop() {
 
     if (lastFaceResult && lastFaceResult.faceLandmarks.length > 0) {
         const landmarks = lastFaceResult.faceLandmarks[0];
-        
-        // --- CẢI TIẾN: TÍNH TOÁN 1 LẦN DUY NHẤT ---
         const { faceBox, isBlowing } = analyzeFace(landmarks);
-
+        
         drawHat(faceBox);
-        drawFaceBox(faceBox, isBlowing); // Vẽ khung mặt với màu tương ứng
+        drawFaceBox(faceBox, isBlowing);
         
         if (gameActive) {
             handleCollisions(faceBox, isBlowing);
@@ -109,13 +113,14 @@ function gameLoop() {
 function analyzeFace(landmarks) {
     let minX = 1, maxX = 0, minY = 1, maxY = 0;
     for (const point of landmarks) {
-        if (point.x < minX) minX = point.x;
-        if (point.x > maxX) maxX = point.x;
-        if (point.y < minY) minY = point.y;
-        if (point.y > maxY) maxY = point.y;
+        minX = Math.min(minX, point.x);
+        maxX = Math.max(maxX, point.x);
+        minY = Math.min(minY, point.y);
+        maxY = Math.max(maxY, point.y);
     }
+    
     const faceBox = {
-        x: canvasElement.width - (maxX * canvasElement.width),
+        x: minX * canvasElement.width,
         y: minY * canvasElement.height,
         width: (maxX - minX) * canvasElement.width,
         height: (maxY - minY) * canvasElement.height
@@ -124,7 +129,6 @@ function analyzeFace(landmarks) {
     const topLip = landmarks[13];
     const bottomLip = landmarks[14];
     const mouthOpenRatio = Math.abs(topLip.y - bottomLip.y);
-    // <-- THAY ĐỔI: Giảm ngưỡng để nhạy hơn
     const BLOW_THRESHOLD = 0.035; 
     const isBlowing = mouthOpenRatio > BLOW_THRESHOLD;
 
@@ -132,19 +136,19 @@ function analyzeFace(landmarks) {
 }
 
 function drawHat(faceBox) {
+    const flippedX = canvasElement.width - faceBox.x - faceBox.width;
     const hatWidth = faceBox.width * 1.5;
     const hatHeight = hatImage.height * (hatWidth / hatImage.width);
-    const hatX = faceBox.x - (hatWidth - faceBox.width) / 2; // Canh giữa với box
+    const hatX = flippedX - (hatWidth - faceBox.width) / 2;
     const hatY = faceBox.y - hatHeight * 0.9;
     canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
 }
 
 function drawFaceBox(faceBox, isBlowing) {
-    // <-- THAY ĐỔI: Thêm tính năng chẩn đoán
-    // Khung sẽ đổi màu khi hành động "thổi" được ghi nhận
-    canvasCtx.strokeStyle = isBlowing ? '#FF4500' : '#00FF00'; // Đỏ cam khi thổi, xanh khi không
+    const flippedX = canvasElement.width - faceBox.x - faceBox.width;
+    canvasCtx.strokeStyle = isBlowing ? '#FF4500' : '#00FF00';
     canvasCtx.lineWidth = 4;
-    canvasCtx.strokeRect(faceBox.x, faceBox.y, faceBox.width, faceBox.height);
+    canvasCtx.strokeRect(flippedX, faceBox.y, faceBox.width, faceBox.height);
 }
 
 function drawCandles() {
@@ -167,7 +171,7 @@ function handleCollisions(faceBox, isBlowing) {
 }
 
 function isColliding(rect1, rect2) {
-    const padding = 20; // Giảm padding một chút
+    const padding = 20;
     return (
         rect1.x < rect2.x + rect2.width + padding &&
         rect1.x + rect1.width > rect2.x - padding &&
@@ -177,8 +181,7 @@ function isColliding(rect1, rect2) {
 }
 
 function spawnCandle() {
-    // <-- THAY ĐỔI: Giảm số lượng nến tối đa
-    if (candles.length > 2) { // Tối đa 3 nến
+    if (candles.length > 2) {
         candles.shift();
     }
     const size = 80;
@@ -199,17 +202,14 @@ function startGame() {
     finalMessageElement.classList.add('hidden');
     gameInfoElement.style.display = 'flex';
     video.play();
-
     gameInterval = setInterval(() => {
         timeLeft--;
         timerElement.innerText = timeLeft;
         if (timeLeft <= 0) endGame();
     }, 1000);
-
-    // <-- THAY ĐỔI: Tăng thời gian giữa các lần xuất hiện
     candleInterval = setInterval(() => {
         if (gameActive) spawnCandle();
-    }, 2000); // 2 giây
+    }, 2000);
 }
 
 function endGame() {
