@@ -35,7 +35,7 @@ const createFaceDetector = async () => {
 
 async function initialize() {
     try {
-        const hatPromise = loadImage('https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/birthday_hat.png');
+        const hatPromise = loadImage('https://github.com/mrngovancuong-cyber/image-data/blob/80e3d42773bcf688f3b7e8b27a3242d85f6d4945/birthdayhat.png');
         const detectorPromise = createFaceDetector();
         await Promise.all([hatPromise, detectorPromise]);
         console.log("SUCCESS: AI and Hat Image are ready!");
