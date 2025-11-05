@@ -13,14 +13,12 @@ let faceDetector;
 let isDetecting = false;
 const hatImage = new Image();
 
-// Hàm tải ảnh, trả về một Promise
 const loadImage = (src) => {
     return new Promise((resolve, reject) => {
         hatImage.onload = () => resolve(hatImage);
         hatImage.onerror = reject;
-        // Thêm timestamp để tránh lỗi cache của trình duyệt
         hatImage.src = src + '?' + new Date().getTime();
-        hatImage.crossOrigin = "Anonymous"; // Cần thiết khi tải ảnh từ domain khác
+        hatImage.crossOrigin = "Anonymous";
     });
 };
 
@@ -35,17 +33,11 @@ const createFaceDetector = async () => {
     });
 };
 
-// --- HÀM KHỞI TẠO CHÍNH ---
-// Chờ cho CẢ AI và ảnh cái nón được tải xong
 async function initialize() {
     try {
-        // Lấy link ảnh raw từ GitHub của bạn
-        const hatPromise = loadImage('https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/birthday%20hat.png');
+        const hatPromise = loadImage('https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/birthday_hat.png');
         const detectorPromise = createFaceDetector();
-        
-        // Chờ cả hai hoàn tất
         await Promise.all([hatPromise, detectorPromise]);
-
         console.log("SUCCESS: AI and Hat Image are ready!");
         loadingElement.classList.add("hidden");
         startButton.disabled = false;
@@ -55,7 +47,7 @@ async function initialize() {
     }
 }
 
-initialize(); // Bắt đầu quá trình khởi tạo
+initialize();
 
 navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
     video.srcObject = stream;
@@ -68,6 +60,11 @@ function predictWebcam() {
 
     if (isDetecting && faceDetector) {
         faceDetector.detectForVideo(video, performance.now(), (result) => {
+            // ==========================================================
+            // ĐÂY LÀ DÒNG GỠ LỖI QUAN TRỌNG NHẤT
+            console.log(result); // In ra kết quả AI trả về
+            // ==========================================================
+            
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
             if (result.detections && result.detections.length > 0) {
@@ -85,7 +82,7 @@ function drawHat(face) {
     const hatHeight = hatImage.height * (hatWidth / hatImage.width);
     const hatX = (1 - (face.originX + face.width / 2)) * canvasElement.width - (hatWidth / 2);
     const hatY = face.originY * canvasElement.height - hatHeight * 0.9;
-    canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
+    canvasCtx.drawImage(hatImage, hat_x, hatY, hatWidth, hatHeight);
 }
 
 function startGame() {
