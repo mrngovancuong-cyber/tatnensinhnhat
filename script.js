@@ -17,10 +17,9 @@ let gameIsRunning = false;
 let candles = [];
 let score = 0;
 let timer = 60;
-let gameInterval, timerInterval, candleInterval;
+let timerInterval, candleInterval;
 
 const createHandLandmarker = async () => {
-    // Dòng này cũng được cập nhật để đồng bộ phiên bản
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/wasm");
     handLandmarker = await HandLandmarker.createFromOptions(vision, {
         baseOptions: {
@@ -40,20 +39,58 @@ navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
     video.addEventListener("loadeddata", predictWebcam);
 });
 
+// ====================================================================
+// PHẦN CODE MỚI ĐỂ VẼ BÀN TAY (GỠ LỖI VÀ LÀM GAME THÚ VỊ HƠN)
+// ====================================================================
+function drawHandConnectors(landmarks) {
+    const connectors = [
+        [0, 1], [1, 2], [2, 3], [3, 4], // Thumb
+        [0, 5], [5, 6], [6, 7], [7, 8], // Index
+        [5, 9], [9, 10], [10, 11], [11, 12], // Middle
+        [9, 13], [13, 14], [14, 15], [15, 16], // Ring
+        [13, 17], [0, 17], [17, 18], [18, 19], [19, 20] // Pinky
+    ];
+    canvasCtx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
+    canvasCtx.lineWidth = 3;
+    connectors.forEach(pair => {
+        const start = landmarks[pair[0]];
+        const end = landmarks[pair[1]];
+        canvasCtx.beginPath();
+        canvasCtx.moveTo((1 - start.x) * canvasElement.width, start.y * canvasElement.height);
+        canvasCtx.lineTo((1 - end.x) * canvasElement.width, end.y * canvasElement.height);
+        canvasCtx.stroke();
+    });
+}
+
+function drawHandLandmarks(landmarks) {
+    canvasCtx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+    landmarks.forEach(point => {
+        canvasCtx.beginPath();
+        canvasCtx.arc((1 - point.x) * canvasElement.width, point.y * canvasElement.height, 5, 0, 2 * Math.PI);
+        canvasCtx.fill();
+    });
+}
+// ====================================================================
+// KẾT THÚC PHẦN CODE MỚI
+// ====================================================================
+
 function predictWebcam() {
     canvasElement.width = video.videoWidth;
     canvasElement.height = video.videoHeight;
-    
+
     if (lastVideoTime !== video.currentTime && handLandmarker) {
         lastVideoTime = video.currentTime;
         handLandmarker.detectForVideo(video, performance.now(), (result) => {
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-            
-            if (result.landmarks && result.landmarks.length > 0) {
-                const landmarks = result.landmarks[0];
-                checkPinch(landmarks);
-            }
+
             if (gameIsRunning) {
+                if (result.landmarks && result.landmarks.length > 0) {
+                    const landmarks = result.landmarks[0];
+                    // VẼ BÀN TAY LÊN MÀN HÌNH
+                    drawHandConnectors(landmarks);
+                    drawHandLandmarks(landmarks);
+                    checkPinch(landmarks);
+                }
                 drawCandles();
             }
         });
@@ -69,17 +106,17 @@ function checkPinch(landmarks) {
         Math.pow(thumbTip.y - indexTip.y, 2)
     );
 
-    if (distance < 0.05) { // Threshold for pinch gesture
-        const pinchX = (1 - indexTip.x) * canvasElement.width; // Flipped coordinate
+    if (distance < 0.05) {
+        const pinchX = (1 - indexTip.x) * canvasElement.width;
         const pinchY = indexTip.y * canvasElement.height;
-        
+
         candles.forEach(candle => {
             if (candle.state === 'lit') {
                 const distToCandle = Math.sqrt(
-                    Math.pow(pinchX - candle.x, 2) + 
+                    Math.pow(pinchX - candle.x, 2) +
                     Math.pow(pinchY - candle.y, 2)
                 );
-                if (distToCandle < 30) { // Collision radius
+                if (distToCandle < 30) {
                     candle.state = 'snuffed';
                     score++;
                     scoreElement.textContent = score;
@@ -92,38 +129,49 @@ function checkPinch(landmarks) {
 function spawnCandle() {
     if (candles.filter(c => c.state === 'lit').length < 10) {
         candles.push({
-            x: Math.random() * (canvasElement.width - 40) + 20,
-            y: Math.random() * (canvasElement.height - 40) + 20,
-            state: 'lit'
+            x: Math.random() * (canvasElement.width - 60) + 30,
+            y: Math.random() * (canvasElement.height - 60) + 30,
+            state: 'lit',
+            snuffedTime: 0 // Thêm thuộc tính để quản lý hiệu ứng khói
         });
     }
 }
 
 function drawCandles() {
     canvasCtx.font = "40px serif";
-    candles.forEach((candle, index) => {
+    const now = Date.now();
+    candles.forEach(candle => {
         if (candle.state === 'lit') {
             canvasCtx.fillText('🔥', candle.x, candle.y);
         } else {
-             canvasCtx.fillText('💨', candle.x, candle.y);
+            if (candle.snuffedTime === 0) {
+                candle.snuffedTime = now;
+            }
+            // Hiệu ứng khói chỉ tồn tại trong 1 giây
+            if (now - candle.snuffedTime < 1000) {
+                canvasCtx.globalAlpha = 1 - (now - candle.snuffedTime) / 1000; // Làm khói mờ dần
+                canvasCtx.fillText('💨', candle.x, candle.y);
+                canvasCtx.globalAlpha = 1.0; // Reset độ trong suốt
+            }
         }
     });
-    // Remove snuffed candles after a short while
-    candles = candles.filter(candle => candle.state === 'lit');
-}
 
+    // SỬA LỖI: Chỉ xóa nến sau khi hiệu ứng khói đã kết thúc
+    candles = candles.filter(candle => candle.state === 'lit' || (now - candle.snuffedTime < 1000));
+}
 
 function startGame() {
     gameIsRunning = true;
     score = 0;
-    timer = 60; // You can change the game duration here
+    timer = 60;
     candles = [];
     scoreElement.textContent = score;
     timerElement.textContent = timer;
     startButton.classList.add("hidden");
+    document.getElementById("game-info").classList.remove("hidden");
     finalMessage.classList.add("hidden");
 
-    candleInterval = setInterval(spawnCandle, 1000); // Spawn a candle every second
+    candleInterval = setInterval(spawnCandle, 1000);
     timerInterval = setInterval(() => {
         timer--;
         timerElement.textContent = timer;
@@ -137,10 +185,14 @@ function endGame() {
     gameIsRunning = false;
     clearInterval(candleInterval);
     clearInterval(timerInterval);
-    
+
     finalScoreElement.textContent = score;
     finalMessage.classList.remove("hidden");
     startButton.classList.remove("hidden");
+    document.getElementById("game-info").classList.add("hidden");
 }
 
 startButton.addEventListener("click", startGame);
+
+// Thay đổi giao diện ban đầu một chút
+document.getElementById("game-info").classList.add("hidden");
