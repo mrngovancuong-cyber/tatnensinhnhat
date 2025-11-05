@@ -1,4 +1,7 @@
-import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/vision_bundle.mjs";
+// ==========================================================
+// THAY ĐỔI LỚN: IMPORT MỌI THỨ TỪ FILE CỤC BỘ
+// ==========================================================
+import { FaceLandmarker, FilesetResolver } from "./mediapipe/vision_bundle.mjs";
 
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
@@ -31,12 +34,9 @@ let candles = [];
 async function initialize() {
     loadingElement.innerText = "Đang tải mô hình AI...";
     
-    // ==========================================================
-    // THAY ĐỔI QUAN TRỌNG NHẤT: SỬ DỤNG FILE .wasm CỤC BỘ
-    // ==========================================================
+    // Yêu cầu thư viện tìm các file phụ trong thư mục cục bộ
     const vision = await FilesetResolver.forVisionTasks(
-        // Trỏ đến thư mục wasm mà bạn vừa tạo
-        "./wasm"
+        "./mediapipe/wasm"
     );
 
     faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
@@ -66,21 +66,16 @@ initialize().catch(err => {
     loadingElement.innerText = "Lỗi! Vui lòng tải lại trang.";
 });
 
+// --- CÁC HÀM CÒN LẠI GIỮ NGUYÊN ---
 let lastVideoTime = -1;
 function gameLoop() {
-    if (video.readyState < 2) {
-        window.requestAnimationFrame(gameLoop);
-        return;
-    }
+    if (video.readyState < 2) { window.requestAnimationFrame(gameLoop); return; }
     if (canvasElement.width !== video.videoWidth) {
-        canvasElement.width = video.videoWidth;
-        canvasElement.height = video.videoHeight;
+        canvasElement.width = video.videoWidth; canvasElement.height = video.videoHeight;
     }
     if (video.currentTime !== lastVideoTime) {
         lastVideoTime = video.currentTime;
-        faceLandmarker.detectForVideo(video, performance.now(), (result) => {
-            lastFaceResult = result;
-        });
+        faceLandmarker.detectForVideo(video, performance.now(), (result) => { lastFaceResult = result; });
     }
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     if (lastFaceResult && lastFaceResult.faceLandmarks.length > 0) {
@@ -88,9 +83,7 @@ function gameLoop() {
         const { faceBox, isBlowing } = analyzeFace(landmarks);
         drawHat(faceBox);
         drawFaceBox(faceBox, isBlowing);
-        if (gameActive) {
-            handleCollisions(faceBox, isBlowing);
-        }
+        if (gameActive) { handleCollisions(faceBox, isBlowing); }
     }
     drawCandles();
     window.requestAnimationFrame(gameLoop);
@@ -99,17 +92,14 @@ function gameLoop() {
 function analyzeFace(landmarks) {
     let minX = 1, maxX = 0, minY = 1, maxY = 0;
     for (const point of landmarks) {
-        minX = Math.min(minX, point.x);
-        maxX = Math.max(maxX, point.x);
-        minY = Math.min(minY, point.y);
-        maxY = Math.max(maxY, point.y);
+        minX = Math.min(minX, point.x); maxX = Math.max(maxX, point.x);
+        minY = Math.min(minY, point.y); maxY = Math.max(maxY, point.y);
     }
     const faceBox = {
         x: minX * canvasElement.width, y: minY * canvasElement.height,
         width: (maxX - minX) * canvasElement.width, height: (maxY - minY) * canvasElement.height
     };
-    const topLip = landmarks[13];
-    const bottomLip = landmarks[14];
+    const topLip = landmarks[13]; const bottomLip = landmarks[14];
     const mouthOpenRatio = Math.abs(topLip.y - bottomLip.y);
     const BLOW_THRESHOLD = 0.035; 
     const isBlowing = mouthOpenRatio > BLOW_THRESHOLD;
@@ -133,9 +123,7 @@ function drawFaceBox(faceBox, isBlowing) {
 }
 
 function drawCandles() {
-    candles.forEach(candle => {
-        canvasCtx.drawImage(candle.image, candle.x, candle.y, candle.width, candle.height);
-    });
+    candles.forEach(candle => { canvasCtx.drawImage(candle.image, candle.x, candle.y, candle.width, candle.height); });
 }
 
 function handleCollisions(faceBox, isBlowing) {
@@ -150,12 +138,8 @@ function handleCollisions(faceBox, isBlowing) {
 
 function isColliding(rect1, rect2) {
     const padding = 20;
-    return (
-        rect1.x < rect2.x + rect2.width + padding &&
-        rect1.x + rect1.width > rect2.x - padding &&
-        rect1.y < rect2.y + rect2.height + padding &&
-        rect1.y + rect1.height > rect2.y - padding
-    );
+    return (rect1.x < rect2.x + rect2.width + padding && rect1.x + rect1.width > rect2.x - padding &&
+            rect1.y < rect2.y + rect2.height + padding && rect1.y + rect1.height > rect2.y - padding);
 }
 
 function spawnCandle() {
