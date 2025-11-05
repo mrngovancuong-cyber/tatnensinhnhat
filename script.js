@@ -6,9 +6,12 @@ const canvasElement = document.getElementById("output_canvas");
 const canvasCtx = canvasElement.getContext("2d");
 const startButton = document.getElementById("startButton");
 const loadingElement = document.getElementById("loading");
+const gameInfoElement = document.getElementById("game-info");
+const finalMessageElement = document.getElementById("final-message");
 
-document.getElementById("game-info").style.display = 'none';
-document.getElementById("final-message").style.display = 'none';
+// Ẩn các thành phần UI không cần thiết lúc đầu
+gameInfoElement.style.display = 'none';
+finalMessageElement.style.display = 'none';
 
 let faceDetector;
 let isDetecting = false;
@@ -18,7 +21,7 @@ const loadImage = (src) => {
     return new Promise((resolve, reject) => {
         hatImage.onload = () => resolve(hatImage);
         hatImage.onerror = reject;
-        hatImage.src = src + '?' + new Date().getTime();
+        hatImage.src = src + '?' + new Date().getTime(); // Thêm tham số để tránh cache
         hatImage.crossOrigin = "Anonymous";
     });
 };
@@ -36,7 +39,7 @@ const createFaceDetector = async () => {
 
 async function initialize() {
     try {
-        const hatPromise = loadImage('https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/birthdayhat.png');
+        const hatPromise = loadImage('https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/birthday_hat.png');
         const detectorPromise = createFaceDetector();
         await Promise.all([hatPromise, detectorPromise]);
         console.log("SUCCESS: AI and Hat Image are ready!");
@@ -55,23 +58,18 @@ navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
     video.addEventListener("loadeddata", predictWebcam);
 });
 
-async function predictWebcam() {
-    // 1. Đảm bảo kích thước canvas luôn khớp với video
+function predictWebcam() {
     if (canvasElement.width !== video.videoWidth) {
         canvasElement.width = video.videoWidth;
         canvasElement.height = video.videoHeight;
     }
 
-    // 2. Xóa toàn bộ canvas ở đầu mỗi khung hình.
-    // Đây là thay đổi quan trọng nhất!
+    // Luôn xóa canvas ở mỗi khung hình
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-    // 3. Chỉ chạy nhận diện nếu game đang hoạt động
     if (isDetecting && faceDetector) {
         faceDetector.detectForVideo(video, performance.now(), (result) => {
-            // Bây giờ, callback chỉ tập trung vào việc VẼ kết quả
             if (result.detections && result.detections.length > 0) {
-                // Cải tiến: Lặp qua tất cả các khuôn mặt phát hiện được
                 for (const detection of result.detections) {
                     const face = detection.boundingBox;
                     drawFaceBox(face);
@@ -81,40 +79,51 @@ async function predictWebcam() {
         });
     }
 
-    // 4. Yêu cầu trình duyệt vẽ khung hình tiếp theo
     window.requestAnimationFrame(predictWebcam);
 }
 
 
 // ==========================================================
-// HÀM MỚI ĐỂ VẼ KHUNG CHỮ NHẬT
+// CÁC HÀM VẼ ĐÃ SỬA LỖI TÍNH TOÁN TỌA ĐỘ (FIX QUAN TRỌNG NHẤT)
 // ==========================================================
 function drawFaceBox(face) {
-    canvasCtx.strokeStyle = '#00FF00'; // Màu xanh lá cây sáng
-    canvasCtx.lineWidth = 4; // Độ dày của đường kẻ
+    canvasCtx.strokeStyle = '#00FF00';
+    canvasCtx.lineWidth = 4;
 
-    // Tính toán tọa độ đã lật ngược
-    const x = (1 - face.originX - face.width) * canvasElement.width;
-    const y = face.originY * canvasElement.height;
+    // Chuyển đổi tọa độ tỉ lệ sang tọa độ pixel thực tế
     const width = face.width * canvasElement.width;
     const height = face.height * canvasElement.height;
+    // Tính toán lại X cho video đã bị lật ngang
+    const x = canvasElement.width - (face.originX * canvasElement.width) - width;
+    const y = face.originY * canvasElement.height;
 
     canvasCtx.strokeRect(x, y, width, height);
 }
+
+function drawHat(face) {
+    const faceWidthPx = face.width * canvasElement.width;
+    const faceCenterXpx = (face.originX * canvasElement.width) + (faceWidthPx / 2);
+
+    const hatWidth = faceWidthPx * 1.5;
+    const hatHeight = hatImage.height * (hatWidth / hatImage.width);
+
+    // Tính toán tọa độ pixel đã lật ngược
+    const hatX = canvasElement.width - faceCenterXpx - (hatWidth / 2);
+    const hatY = (face.originY * canvasElement.height) - hatHeight * 0.9;
+
+    canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
+}
 // ==========================================================
 
 
-function drawHat(face) {
-    const hatWidth = face.width * 1.5;
-    const hatHeight = hatImage.height * (hatWidth / hatImage.width);
-    const hatX = (1 - (face.originX + face.width / 2)) * canvasElement.width - (hatWidth / 2);
-    const hatY = face.originY * canvasElement.height - hatHeight * 0.9;
-    canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
-}
-
 function startGame() {
+    console.log("Game started!");
     isDetecting = true;
     startButton.style.display = 'none';
+    finalMessageElement.style.display = 'none';
+
+    // Hiển thị lại phần giao diện game (dù chưa có logic)
+    gameInfoElement.style.display = 'flex';
 }
 
 startButton.addEventListener("click", startGame);
