@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thử Thách Dập Nến Sinh Nhật!</title>
+    <link rel="stylesheet" href="style.css">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>THỬ THÁCH DẬP NẾN SINH NHẬT!</h1>
+        <div id="game-wrapper">
+            <video id="webcam" autoplay playsinline></video>
+            <canvas id="output_canvas"></canvas>
+            <div id="loading">Đang tải mô hình AI... Vui lòng đợi!</div>
+        </div>
+        <div id="ui-container">
+            <div id="game-info">
+                <span>Điểm: <strong id="score">0</strong></span>
+                <span>Thời gian: <strong id="timer">60</strong></span>
+            </div>
+            <button id="startButton" disabled>BẮT ĐẦU</button>
+            <div id="final-message" class="hidden">
+                <h2>HẾT GIỜ!</h2>
+                <p>Chúc mừng bạn đã dập tắt được <strong id="final-score">0</strong> cây nến!</p>
+                <p class="birthday-wish">CHÚC MỪNG SINH NHẬT NHÉ!</p>
+            </div>
+        </div>
+    </div>
+    <script src="script.js" type="module"></script>
+</body>
+</html>
