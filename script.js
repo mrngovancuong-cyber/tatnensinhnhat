@@ -1,6 +1,3 @@
-// ==========================================================
-// THAY ĐỔI LỚN: QUAY LẠI SỬ DỤNG CDN CHO THƯ VIỆN
-// ==========================================================
 import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/vision_bundle.mjs";
 
 const video = document.getElementById("webcam");
@@ -34,20 +31,23 @@ let candles = [];
 async function initialize() {
     loadingElement.innerText = "Đang tải mô hình AI...";
     
-    // Yêu cầu thư viện tìm các file phụ trên CDN
     const vision = await FilesetResolver.forVisionTasks(
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm"
     );
 
     faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
         baseOptions: {
-            // CHỈ CÓ FILE NÀY LÀ CỤC BỘ ĐỂ TRÁNH LỖI CORS
             modelAssetPath: `./models/face_landmarker.task`,
             delegate: "CPU"
         },
         runningMode: "VIDEO",
         numFaces: 1,
-        minFaceDetectionConfidence: 0.5,
+        // ==========================================================
+        // THAY ĐỔI CUỐI CÙNG: GIẢM NGƯỠNG NHẠY CẢM XUỐNG MỨC THẤP
+        // ==========================================================
+        minFaceDetectionConfidence: 0.3, // Chỉ cần chắc 30% là có mặt
+        minFacePresenceConfidence: 0.3, // Chỉ cần chắc 30% là mặt vẫn còn đó
+        minTrackingConfidence: 0.3, // Theo dõi các điểm chỉ cần chắc 30%
     });
     
     const imagePromises = [hatImage.decode(), ...candleImages.map(img => img.decode())];
@@ -67,7 +67,6 @@ initialize().catch(err => {
     loadingElement.innerText = "Lỗi! Vui lòng tải lại trang.";
 });
 
-// --- CÁC HÀM CÒN LẠI GIỮ NGUYÊN ---
 let lastVideoTime = -1;
 function gameLoop() {
     if (video.readyState < 2) { window.requestAnimationFrame(gameLoop); return; }
@@ -76,7 +75,11 @@ function gameLoop() {
     }
     if (video.currentTime !== lastVideoTime) {
         lastVideoTime = video.currentTime;
-        faceLandmarker.detectForVideo(video, performance.now(), (result) => { lastFaceResult = result; });
+        faceLandmarker.detectForVideo(video, performance.now(), (result) => { 
+            lastFaceResult = result; 
+            // Dòng chẩn đoán quan trọng, bỏ comment nếu vẫn lỗi
+            // console.log("AI Result:", result.faceLandmarks);
+        });
     }
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     if (lastFaceResult && lastFaceResult.faceLandmarks.length > 0) {
