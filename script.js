@@ -1,5 +1,4 @@
-// Dòng này đã được cập nhật lên phiên bản mới và đổi thành .mjs
-import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/vision_bundle.mjs";
+const { HandLandmarker, FilesetResolver } = window.mediapipe.tasks.vision;
 
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
@@ -19,13 +18,9 @@ let score = 0;
 let timer = 60;
 let timerInterval, candleInterval;
 
-// --- BẮT ĐẦU PHẦN GỠ LỖI ---
 const createHandLandmarker = async () => {
     try {
-        console.log("Bắt đầu tải FilesetResolver...");
-        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/wasm");
-        console.log("FilesetResolver đã tải xong. Bắt đầu tạo HandLandmarker...");
-
+        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm");
         handLandmarker = await HandLandmarker.createFromOptions(vision, {
             baseOptions: {
                 modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
@@ -34,16 +29,13 @@ const createHandLandmarker = async () => {
             runningMode: "VIDEO",
             numHands: 1
         });
-
-        console.log("HandLandmarker đã tạo thành công!");
         loadingElement.classList.add("hidden");
         startButton.disabled = false;
     } catch (error) {
-        console.error("LỖI NGHIÊM TRỌNG KHI TẠO HANDLANDMARKER:", error);
+        console.error("LỖI KHI TẠO HANDLANDMARKER:", error);
         loadingElement.innerText = "Tải mô hình AI thất bại. Vui lòng F5 lại trang.";
     }
 };
-// --- KẾT THÚC PHẦN GỠ LỖI ---
 
 createHandLandmarker();
 
@@ -115,12 +107,10 @@ function checkPinch(landmarks) {
     if (distance < 0.05) {
         const pinchX = (1 - indexTip.x) * canvasElement.width;
         const pinchY = indexTip.y * canvasElement.height;
-
         candles.forEach(candle => {
             if (candle.state === 'lit') {
                 const distToCandle = Math.sqrt(
-                    Math.pow(pinchX - candle.x, 2) +
-                    Math.pow(pinchY - candle.y, 2)
+                    Math.pow(pinchX - candle.x, 2) + Math.pow(pinchY - candle.y, 2)
                 );
                 if (distToCandle < 30) {
                     candle.state = 'snuffed';
@@ -150,9 +140,7 @@ function drawCandles() {
         if (candle.state === 'lit') {
             canvasCtx.fillText('🔥', candle.x, candle.y);
         } else {
-            if (candle.snuffedTime === 0) {
-                candle.snuffedTime = now;
-            }
+            if (candle.snuffedTime === 0) candle.snuffedTime = now;
             if (now - candle.snuffedTime < 1000) {
                 canvasCtx.globalAlpha = 1 - (now - candle.snuffedTime) / 1000;
                 canvasCtx.fillText('💨', candle.x, candle.y);
@@ -173,14 +161,11 @@ function startGame() {
     startButton.classList.add("hidden");
     document.getElementById("game-info").classList.remove("hidden");
     finalMessage.classList.add("hidden");
-
     candleInterval = setInterval(spawnCandle, 1000);
     timerInterval = setInterval(() => {
         timer--;
         timerElement.textContent = timer;
-        if (timer <= 0) {
-            endGame();
-        }
+        if (timer <= 0) endGame();
     }, 1000);
 }
 
@@ -188,7 +173,6 @@ function endGame() {
     gameIsRunning = false;
     clearInterval(candleInterval);
     clearInterval(timerInterval);
-
     finalScoreElement.textContent = score;
     finalMessage.classList.remove("hidden");
     startButton.classList.remove("hidden");
