@@ -1,4 +1,4 @@
-// SỬ DỤNG CHÍNH XÁC DÒNG IMPORT MÀ BẠN ĐÃ ĐỀ XUẤT
+// SỬ DỤNG LẠI CẤU TRÚC TỐT NHẤT: import từ phiên bản 0.10.12
 import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/vision_bundle.mjs";
 
 const video = document.getElementById("webcam");
@@ -24,9 +24,8 @@ const createHandLandmarker = async () => {
         const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/wasm");
         handLandmarker = await HandLandmarker.createFromOptions(vision, {
             baseOptions: {
-                // ĐÂY LÀ DÒNG CODE QUAN TRỌNG NHẤT ĐÃ ĐƯỢC SỬA LỖI
-                // SỬ DỤNG ĐƯỜNG LINK MÔ HÌNH MỚI NHẤT VÀ ỔN ĐỊNH NHẤT
-                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/latest/hand_landmarker.task`,
+                // ĐÂY LÀ ĐƯỜNG DẪN MÔ HÌNH CHÍNH XÁC VÀ ỔN ĐỊNH
+                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
                 delegate: "GPU"
             },
             runningMode: "VIDEO",
@@ -77,11 +76,9 @@ function drawHandLandmarks(landmarks) {
 }
 
 function predictWebcam() {
-    if (video.readyState < 2) {
-        window.requestAnimationFrame(predictWebcam);
-        return;
-    }
-
+    canvasElement.width = video.videoWidth;
+    canvasElement.height = video.videoHeight;
+    
     if (lastVideoTime !== video.currentTime && handLandmarker) {
         lastVideoTime = video.currentTime;
         handLandmarker.detectForVideo(video, performance.now(), (result) => {
@@ -130,8 +127,8 @@ function checkPinch(landmarks) {
 function spawnCandle() {
     if (candles.filter(c => c.state === 'lit').length < 10) {
         candles.push({
-            x: Math.random() * (video.videoWidth - 60) + 30,
-            y: Math.random() * (video.videoHeight - 60) + 30,
+            x: Math.random() * (canvasElement.width - 60) + 30,
+            y: Math.random() * (canvasElement.height - 60) + 30,
             state: 'lit',
             snuffedTime: 0
         });
