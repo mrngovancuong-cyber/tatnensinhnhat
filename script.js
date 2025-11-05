@@ -1,4 +1,4 @@
-import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@medipe/tasks-vision@0.10.9/vision_bundle.mjs";
+import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/vision_bundle.mjs";
 
 // --- DOM ELEMENTS ---
 const video = document.getElementById("webcam");
@@ -36,7 +36,7 @@ let candles = [];
 // ==========================================================
 async function initialize() {
     loadingElement.innerText = "Đang tải mô hình AI...";
-    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@medipe/tasks-vision@0.10.9/wasm");
+    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm");
 
     faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
         baseOptions: { modelAssetPath: `https://storage.googleapis.com/medipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`, delegate: "CPU" },
