@@ -19,19 +19,32 @@ let score = 0;
 let timer = 60;
 let timerInterval, candleInterval;
 
+// --- BẮT ĐẦU PHẦN GỠ LỖI ---
 const createHandLandmarker = async () => {
-    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/wasm");
-    handLandmarker = await HandLandmarker.createFromOptions(vision, {
-        baseOptions: {
-            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
-            delegate: "GPU"
-        },
-        runningMode: "VIDEO",
-        numHands: 1
-    });
-    loadingElement.classList.add("hidden");
-    startButton.disabled = false;
+    try {
+        console.log("Bắt đầu tải FilesetResolver...");
+        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/wasm");
+        console.log("FilesetResolver đã tải xong. Bắt đầu tạo HandLandmarker...");
+
+        handLandmarker = await HandLandmarker.createFromOptions(vision, {
+            baseOptions: {
+                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+                delegate: "GPU"
+            },
+            runningMode: "VIDEO",
+            numHands: 1
+        });
+
+        console.log("HandLandmarker đã tạo thành công!");
+        loadingElement.classList.add("hidden");
+        startButton.disabled = false;
+    } catch (error) {
+        console.error("LỖI NGHIÊM TRỌNG KHI TẠO HANDLANDMARKER:", error);
+        loadingElement.innerText = "Tải mô hình AI thất bại. Vui lòng F5 lại trang.";
+    }
 };
+// --- KẾT THÚC PHẦN GỠ LỖI ---
+
 createHandLandmarker();
 
 navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
@@ -39,9 +52,6 @@ navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
     video.addEventListener("loadeddata", predictWebcam);
 });
 
-// ====================================================================
-// PHẦN CODE MỚI ĐỂ VẼ BÀN TAY (GỠ LỖI VÀ LÀM GAME THÚ VỊ HƠN)
-// ====================================================================
 function drawHandConnectors(landmarks) {
     const connectors = [
         [0, 1], [1, 2], [2, 3], [3, 4], // Thumb
@@ -70,9 +80,6 @@ function drawHandLandmarks(landmarks) {
         canvasCtx.fill();
     });
 }
-// ====================================================================
-// KẾT THÚC PHẦN CODE MỚI
-// ====================================================================
 
 function predictWebcam() {
     canvasElement.width = video.videoWidth;
@@ -86,7 +93,6 @@ function predictWebcam() {
             if (gameIsRunning) {
                 if (result.landmarks && result.landmarks.length > 0) {
                     const landmarks = result.landmarks[0];
-                    // VẼ BÀN TAY LÊN MÀN HÌNH
                     drawHandConnectors(landmarks);
                     drawHandLandmarks(landmarks);
                     checkPinch(landmarks);
@@ -132,7 +138,7 @@ function spawnCandle() {
             x: Math.random() * (canvasElement.width - 60) + 30,
             y: Math.random() * (canvasElement.height - 60) + 30,
             state: 'lit',
-            snuffedTime: 0 // Thêm thuộc tính để quản lý hiệu ứng khói
+            snuffedTime: 0
         });
     }
 }
@@ -147,16 +153,13 @@ function drawCandles() {
             if (candle.snuffedTime === 0) {
                 candle.snuffedTime = now;
             }
-            // Hiệu ứng khói chỉ tồn tại trong 1 giây
             if (now - candle.snuffedTime < 1000) {
-                canvasCtx.globalAlpha = 1 - (now - candle.snuffedTime) / 1000; // Làm khói mờ dần
+                canvasCtx.globalAlpha = 1 - (now - candle.snuffedTime) / 1000;
                 canvasCtx.fillText('💨', candle.x, candle.y);
-                canvasCtx.globalAlpha = 1.0; // Reset độ trong suốt
+                canvasCtx.globalAlpha = 1.0;
             }
         }
     });
-
-    // SỬA LỖI: Chỉ xóa nến sau khi hiệu ứng khói đã kết thúc
     candles = candles.filter(candle => candle.state === 'lit' || (now - candle.snuffedTime < 1000));
 }
 
@@ -193,6 +196,4 @@ function endGame() {
 }
 
 startButton.addEventListener("click", startGame);
-
-// Thay đổi giao diện ban đầu một chút
 document.getElementById("game-info").classList.add("hidden");
