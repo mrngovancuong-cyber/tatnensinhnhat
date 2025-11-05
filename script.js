@@ -1,5 +1,5 @@
-// Chúng ta không cần import nữa, vì thư viện đã được tải trong file HTML
-const { HandLandmarker, FilesetResolver } = window.mediapipe.tasks.vision;
+// Dòng này đã được cập nhật lên phiên bản mới và đổi thành .mjs
+import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/vision_bundle.mjs";
 
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
@@ -19,6 +19,7 @@ let score = 0;
 let timer = 60;
 let timerInterval, candleInterval;
 
+// --- BẮT ĐẦU PHẦN GỠ LỖI ---
 const createHandLandmarker = async () => {
     try {
         console.log("Bắt đầu tải FilesetResolver...");
@@ -34,7 +35,7 @@ const createHandLandmarker = async () => {
             numHands: 1
         });
 
-        console.log("HandLandmarker đã tạo thành công! Sẵn sàng để chơi!");
+        console.log("HandLandmarker đã tạo thành công!");
         loadingElement.classList.add("hidden");
         startButton.disabled = false;
     } catch (error) {
@@ -42,6 +43,7 @@ const createHandLandmarker = async () => {
         loadingElement.innerText = "Tải mô hình AI thất bại. Vui lòng F5 lại trang.";
     }
 };
+// --- KẾT THÚC PHẦN GỠ LỖI ---
 
 createHandLandmarker();
 
