@@ -10,80 +10,87 @@ const gameInfoElement = document.getElementById("game-info");
 
 // Biến trạng thái game
 let faceDetector;
-let lastDetections = []; // Biến lưu kết quả nhận diện cuối cùng
+let lastDetections = [];
 let isDetecting = false;
 
 const hatImage = new Image();
 hatImage.src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/birthdayhat.png';
 hatImage.crossOrigin = "Anonymous";
 
-// Hàm khởi tạo AI
-async function initialize() {
+// Hàm khởi tạo AI (chỉ tải AI và ảnh)
+async function initializeAI() {
+    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm");
+    faceDetector = await FaceDetector.createFromOptions(vision, {
+        baseOptions: {
+            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite`,
+            delegate: "GPU"
+        },
+        runningMode: "VIDEO"
+    });
+    await hatImage.decode(); // Đảm bảo ảnh đã tải xong và sẵn sàng để vẽ
+    console.log("SUCCESS: AI and Hat Image are ready!");
+}
+
+// ==========================================================
+// HÀM CHÍNH ĐỂ KHỞI ĐỘNG MỌI THỨ THEO ĐÚNG THỨ TỰ
+// ==========================================================
+async function main() {
     try {
-        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm");
-        faceDetector = await FaceDetector.createFromOptions(vision, {
-            baseOptions: {
-                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite`,
-                delegate: "GPU"
-            },
-            runningMode: "VIDEO"
+        // Chạy khởi tạo AI và lấy quyền camera CÙNG LÚC
+        const initializeAIPromise = initializeAI();
+        const getUserMediaPromise = navigator.mediaDevices.getUserMedia({ video: true });
+
+        const [_, stream] = await Promise.all([initializeAIPromise, getUserMediaPromise]);
+
+        // Gán stream cho video và đợi nó sẵn sàng
+        video.srcObject = stream;
+        await new Promise((resolve) => {
+            video.addEventListener("loadeddata", resolve);
         });
-        console.log("SUCCESS: AI Model is ready!");
-        await hatImage.decode(); // Đảm bảo ảnh đã tải xong
-        console.log("SUCCESS: Hat Image is ready!");
+        
+        // MỌI THỨ ĐÃ SẴN SÀNG!
         loadingElement.classList.add("hidden");
         startButton.disabled = false;
+        console.log("Application is fully ready. Starting game loop.");
+        
+        // Bắt đầu vòng lặp game
+        window.requestAnimationFrame(gameLoop);
+
     } catch (error) {
-        console.error("LỖI KHỞI TẠO:", error);
-        loadingElement.innerText = "Tải tài nguyên thất bại. Vui lòng F5.";
+        console.error("LỖI KHỞI ĐỘNG ỨNG DỤNG:", error);
+        loadingElement.innerText = "Tải tài nguyên thất bại hoặc không có camera.";
     }
 }
 
-// Lấy camera và bắt đầu
-navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
-    video.srcObject = stream;
-    video.addEventListener("loadeddata", () => {
-        // Bắt đầu vòng lặp vẽ ngay khi video sẵn sàng
-        window.requestAnimationFrame(gameLoop);
-    });
-});
-
-initialize();
+main(); // Chạy hàm chính
 
 // ==========================================================
-// VÒNG LẶP GAME CHÍNH (ĐÃ SỬA LỖI)
+// VÒNG LẶP GAME VÀ CÁC HÀM VẼ (Giữ nguyên như phiên bản trước)
 // ==========================================================
 let lastVideoTime = -1;
 function gameLoop() {
-    // 1. Đồng bộ kích thước canvas với video
     if (canvasElement.width !== video.videoWidth) {
         canvasElement.width = video.videoWidth;
         canvasElement.height = video.videoHeight;
     }
 
-    // 2. Gửi khung hình cho AI nếu game đang chạy và có khung hình mới
     if (isDetecting && video.currentTime !== lastVideoTime) {
         lastVideoTime = video.currentTime;
         faceDetector.detectForVideo(video, performance.now(), (result) => {
-            // Chỉ cập nhật dữ liệu, không vẽ ở đây
             if (result.detections) {
                 lastDetections = result.detections;
             }
         });
     }
 
-    // 3. Luôn luôn xóa canvas ở mỗi khung hình
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-    // 4. Luôn luôn vẽ kết quả cuối cùng mà chúng ta có
     if (isDetecting && lastDetections.length > 0) {
         for (const detection of lastDetections) {
             drawFaceBox(detection.boundingBox);
             drawHat(detection.boundingBox);
         }
     }
-
-    // 5. Lặp lại
     window.requestAnimationFrame(gameLoop);
 }
 
