@@ -19,18 +19,23 @@ document.addEventListener('DOMContentLoaded', () => {
     let timeLeft = 60;
     let gameInterval, candleInterval;
     let candles = [];
+    let detections = [];
 
-    // --- HÌNH ẢNH ---
     const hatImage = new Image();
+    hatImage.src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/birthdayhat.png';
+    hatImage.crossOrigin = "Anonymous";
     const candleImages = [new Image(), new Image()];
+    candleImages[0].src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/candleb1.png';
+    candleImages[0].crossOrigin = "Anonymous";
+    candleImages[1].src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/candelb2.png';
+    candleImages[1].crossOrigin = "Anonymous";
 
     // ==========================================================
     // BƯỚC 1: HÀM KHỞI TẠO CHÍNH
     // ==========================================================
-    async function initialize() {
+    async function run() {
         try {
-            startButton.disabled = true; // Vô hiệu hóa nút ban đầu
-
+            startButton.disabled = true;
             loadingElement.innerText = "Đang tải mô hình AI...";
             await Promise.all([
                 faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
@@ -39,19 +44,16 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("AI Models Loaded!");
 
             loadingElement.innerText = "Đang tải hình ảnh...";
-            // Hàm hỗ trợ tải ảnh
-            const loadImage = (img, src) => new Promise((resolve, reject) => {
-                img.src = src;
-                img.crossOrigin = "Anonymous";
-                img.onload = resolve;
-                img.onerror = reject;
+            const createImagePromise = (image, src) => new Promise((resolve, reject) => {
+                image.src = src;
+                image.crossOrigin = "Anonymous";
+                image.onload = resolve;
+                image.onerror = reject;
             });
-
-            // Tải tất cả hình ảnh với link ĐÚNG
             await Promise.all([
-                loadImage(hatImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/birthdayhat.png'),
-                loadImage(candleImages[0], 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/candleb1.png'),
-                loadImage(candleImages[1], 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/candelb2.png')
+                createImagePromise(hatImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/birthdayhat.png'),
+                createImagePromise(candleImages[0], 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/candleb1.png'),
+                createImagePromise(candleImages[1], 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/candelb2.png')
             ]);
             console.log("Images Loaded!");
 
@@ -59,20 +61,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
             video.srcObject = stream;
             await new Promise(resolve => { video.onloadedmetadata = resolve; });
-            
+
             // MỌI THỨ ĐÃ SẴN SÀNG!
             loadingElement.classList.add("hidden");
-            startButton.disabled = false; // Kích hoạt nút bấm
+            startButton.disabled = false;
             video.play();
-            requestAnimationFrame(gameLoop); // Bắt đầu vòng lặp nhận diện
-            
+            requestAnimationFrame(gameLoop);
         } catch (error) {
             console.error("Initialization Failed:", error);
-            loadingElement.innerText = `Lỗi: ${error.message}. Vui lòng tải lại trang.`;
+            loadingElement.innerText = "Lỗi! Vui lòng tải lại trang.";
         }
     }
-    
-    initialize();
+    run();
 
     // ==========================================================
     // BƯỚC 2: VÒNG LẶP GAME
@@ -82,146 +82,101 @@ document.addEventListener('DOMContentLoaded', () => {
             requestAnimationFrame(gameLoop);
             return;
         }
-
         if (canvasElement.width !== video.videoWidth) {
             canvasElement.width = video.videoWidth;
             canvasElement.height = video.videoHeight;
         }
-        
-        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-        // Luôn nhận diện khuôn mặt
         const detectorOptions = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 });
-        const detections = await faceapi.detectAllFaces(video, detectorOptions).withFaceLandmarks();
-        
-        // Nếu tìm thấy khuôn mặt, vẽ các thành phần
-        if (detections && detections.length > 0) {
-            const face = detections[0];
-            const box = face.detection.box;
-            const noseTip = face.landmarks.positions[30];
-            
-            drawFaceElements(box, noseTip);
-
-            // Logic tương tác game (chỉ chạy khi đã nhấn nút Bắt đầu)
-            if (gameActive) {
+        detections = await faceapi.detectAllFaces(video, detectorOptions).withFaceLandmarks();
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        if (gameActive) {
+            if (detections && detections.length > 0) {
+                const noseTip = detections[0].landmarks.positions[30];
                 handleCollisions(noseTip);
             }
-        }
-        
-        // Luôn vẽ nến (chỉ chạy khi đã nhấn nút Bắt đầu)
-        if (gameActive) {
             drawCandles();
         }
-        
+        if (detections && detections.length > 0) {
+            const face = detections[0];
+            drawFaceElements(face.detection.box, face.landmarks.positions[30]);
+        }
         requestAnimationFrame(gameLoop);
     }
 
     // ==========================================================
-    // CÁC HÀM VẼ
+    // CÁC HÀM VẼ VÀ LOGIC
     // ==========================================================
     function drawFaceElements(box, noseTip) {
         const flippedX = canvasElement.width - box.x - box.width;
-
-        // Vẽ khung xanh
         canvasCtx.strokeStyle = '#00FF00';
         canvasCtx.lineWidth = 4;
         canvasCtx.strokeRect(flippedX, box.y, box.width, box.height);
-
-        // Vẽ nón
         const hatWidth = box.width * 1.5;
         const hatHeight = hatImage.height * (hatWidth / hatImage.width);
         const hatX = flippedX - (hatWidth - box.width) / 2;
         const hatY = box.y - hatHeight * 0.9;
         canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
-
-        // Vẽ chấm đỏ ở chóp mũi
         const flippedNoseX = canvasElement.width - noseTip.x;
         canvasCtx.beginPath();
         canvasCtx.arc(flippedNoseX, noseTip.y, 5, 0, 2 * Math.PI);
         canvasCtx.fillStyle = 'red';
         canvasCtx.fill();
     }
-
     function drawCandles() {
         candles.forEach(candle => {
             canvasCtx.drawImage(candle.image, candle.x, candle.y, candle.width, candle.height);
         });
     }
-
-    // ==========================================================
-    // LOGIC GAME
-    // ==========================================================
     function handleCollisions(noseTip) {
-        const flippedNoseX = canvasElement.width - noseTip.x;
-        
         candles.forEach((candle, index) => {
-            // Kiểm tra xem mũi có nằm trong vùng của nến không
+            const flippedNoseX = canvasElement.width - noseTip.x;
             if (flippedNoseX > candle.x && flippedNoseX < candle.x + candle.width &&
                 noseTip.y > candle.y && noseTip.y < candle.y + candle.height) {
-                
-                candles.splice(index, 1); // Xóa nến
+                candles.splice(index, 1);
                 score++;
                 scoreElement.innerText = score;
             }
         });
     }
-
     function spawnCandle() {
-        if (candles.length >= 3) { // Giới hạn tối đa 3 nến trên màn hình
-             return;
-        }
+        if (candles.length > 2) { candles.shift(); }
         const size = 80;
-        // Vị trí ngẫu nhiên trong vùng an toàn của màn hình
         const x = Math.random() * (canvasElement.width - size - 100) + 50;
         const y = Math.random() * (canvasElement.height - size - 100) + 50;
-        
-        // Chọn ngẫu nhiên hình ảnh nến
         const randomImage = candleImages[Math.floor(Math.random() * candleImages.length)];
-        
         candles.push({ x, y, width: size, height: size, image: randomImage });
     }
 
     // ==========================================================
-    // CÁC HÀM QUẢN LÝ TRẠNG THÁI GAME
+    // CÁC HÀM QUẢN LÝ GAME
     // ==========================================================
     function startGame() {
-        score = 0;
-        timeLeft = 60;
-        candles = [];
-        scoreElement.innerText = score;
-        timerElement.innerText = timeLeft;
+        score = 0; timeLeft = 60; candles = [];
+        scoreElement.innerText = score; timerElement.innerText = timeLeft;
         gameActive = true;
         
-        startButton.style.display = 'none'; // Ẩn nút bắt đầu
+        startButton.style.display = 'none';
         finalMessageElement.classList.add('hidden');
-        gameInfoElement.style.display = 'flex'; // Hiện điểm số/thời gian
+        gameInfoElement.style.display = 'flex';
         
-        // Bắt đầu đếm ngược
         gameInterval = setInterval(() => {
             timeLeft--;
             timerElement.innerText = timeLeft;
-            if (timeLeft <= 0) {
-                endGame();
-            }
+            if (timeLeft <= 0) endGame();
         }, 1000);
         
-        // Bắt đầu tạo nến sau mỗi 1.5 giây
         candleInterval = setInterval(() => {
             if (gameActive) spawnCandle();
-        }, 1500);
+        }, 2000);
     }
-
     function endGame() {
         gameActive = false;
         clearInterval(gameInterval);
         clearInterval(candleInterval);
-        
         finalScoreElement.innerText = score;
         finalMessageElement.classList.remove('hidden');
-        startButton.style.display = 'block'; // Hiện lại nút bắt đầu
-        
-        candles = []; // Xóa hết nến
+        startButton.style.display = 'block';
+        candles = [];
     }
-
     startButton.addEventListener("click", startGame);
 });
