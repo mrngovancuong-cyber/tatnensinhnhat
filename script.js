@@ -1,4 +1,5 @@
-import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/tasks-vision.js" type="module";
+// Dòng này đã được cập nhật lên phiên bản mới và đổi thành .mjs
+import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/vision_bundle.mjs";
 
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
@@ -19,7 +20,8 @@ let timer = 60;
 let gameInterval, timerInterval, candleInterval;
 
 const createHandLandmarker = async () => {
-    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+    // Dòng này cũng được cập nhật để đồng bộ phiên bản
+    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/wasm");
     handLandmarker = await HandLandmarker.createFromOptions(vision, {
         baseOptions: {
             modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
