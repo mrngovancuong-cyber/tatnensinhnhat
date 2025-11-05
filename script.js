@@ -1,4 +1,3 @@
-// Import thư viện AI với phiên bản ổn định
 import { FaceDetector, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/vision_bundle.mjs";
 
 const video = document.getElementById("webcam");
@@ -7,37 +6,56 @@ const canvasCtx = canvasElement.getContext("2d");
 const startButton = document.getElementById("startButton");
 const loadingElement = document.getElementById("loading");
 
-// Ẩn các yếu tố không cần thiết cho bài kiểm tra này
 document.getElementById("game-info").style.display = 'none';
 document.getElementById("final-message").style.display = 'none';
 
 let faceDetector;
 let isDetecting = false;
-
-// Tải hình ảnh cái nón sinh nhật
 const hatImage = new Image();
-hatImage.src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/birthday%20hat.png'; // Link ảnh nón PNG trong suốt
+
+// Hàm tải ảnh, trả về một Promise
+const loadImage = (src) => {
+    return new Promise((resolve, reject) => {
+        hatImage.onload = () => resolve(hatImage);
+        hatImage.onerror = reject;
+        // Thêm timestamp để tránh lỗi cache của trình duyệt
+        hatImage.src = src + '?' + new Date().getTime();
+        hatImage.crossOrigin = "Anonymous"; // Cần thiết khi tải ảnh từ domain khác
+    });
+};
 
 const createFaceDetector = async () => {
+    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm");
+    faceDetector = await FaceDetector.createFromOptions(vision, {
+        baseOptions: {
+            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite`,
+            delegate: "GPU"
+        },
+        runningMode: "VIDEO"
+    });
+};
+
+// --- HÀM KHỞI TẠO CHÍNH ---
+// Chờ cho CẢ AI và ảnh cái nón được tải xong
+async function initialize() {
     try {
-        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm");
-        faceDetector = await FaceDetector.createFromOptions(vision, {
-            baseOptions: {
-                // Sử dụng mô hình nhận diện khuôn mặt
-                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite`,
-                delegate: "GPU"
-            },
-            runningMode: "VIDEO"
-        });
+        // Lấy link ảnh raw từ GitHub của bạn
+        const hatPromise = loadImage('https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/birthday%20hat.png');
+        const detectorPromise = createFaceDetector();
+        
+        // Chờ cả hai hoàn tất
+        await Promise.all([hatPromise, detectorPromise]);
+
+        console.log("SUCCESS: AI and Hat Image are ready!");
         loadingElement.classList.add("hidden");
         startButton.disabled = false;
     } catch (error) {
-        console.error("LỖI KHI TẠO FACE DETECTOR:", error);
-        loadingElement.innerText = "Tải mô hình AI thất bại. Vui lòng F5 lại trang.";
+        console.error("LỖI KHỞI TẠO:", error);
+        loadingElement.innerText = "Tải tài nguyên thất bại. Vui lòng F5.";
     }
-};
+}
 
-createFaceDetector();
+initialize(); // Bắt đầu quá trình khởi tạo
 
 navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
     video.srcObject = stream;
@@ -53,7 +71,6 @@ function predictWebcam() {
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
             if (result.detections && result.detections.length > 0) {
-                // Lấy thông tin khuôn mặt đầu tiên phát hiện được
                 const face = result.detections[0].boundingBox;
                 drawHat(face);
             }
@@ -64,21 +81,16 @@ function predictWebcam() {
 }
 
 function drawHat(face) {
-    const hatWidth = face.width * 1.5; // Nón rộng hơn mặt một chút
-    const hatHeight = hatImage.height * (hatWidth / hatImage.width); // Giữ đúng tỷ lệ
-
-    // Tính toán vị trí để đội nón (có lật ngược theo camera)
+    const hatWidth = face.width * 1.5;
+    const hatHeight = hatImage.height * (hatWidth / hatImage.width);
     const hatX = (1 - (face.originX + face.width / 2)) * canvasElement.width - (hatWidth / 2);
-    const hatY = face.originY * canvasElement.height - hatHeight * 0.9; // Đặt nón cao hơn đỉnh đầu một chút
-
+    const hatY = face.originY * canvasElement.height - hatHeight * 0.9;
     canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
 }
 
-
-// Hàm bắt đầu đơn giản: chỉ bật chế độ nhận diện
 function startGame() {
     isDetecting = true;
-    startButton.style.display = 'none'; // Ẩn nút bắt đầu đi
+    startButton.style.display = 'none';
 }
 
 startButton.addEventListener("click", startGame);
