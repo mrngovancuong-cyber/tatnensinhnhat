@@ -1,6 +1,3 @@
-import { FaceDetector, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/vision_bundle.mjs";
-
-// Lấy các phần tử DOM
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
 const canvasCtx = canvasElement.getContext("2d");
@@ -8,116 +5,87 @@ const startButton = document.getElementById("startButton");
 const loadingElement = document.getElementById("loading");
 const gameInfoElement = document.getElementById("game-info");
 
-// Biến trạng thái game
-let faceDetector;
-let lastDetections = [];
-let isDetecting = false;
-
 const hatImage = new Image();
 hatImage.src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/birthdayhat.png';
 hatImage.crossOrigin = "Anonymous";
 
-// Hàm khởi tạo AI
-async function initializeAI() {
-    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm");
-    faceDetector = await FaceDetector.createFromOptions(vision, {
-        baseOptions: {
-            modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite`,
-            // ==========================================================
-            // THAY ĐỔI QUAN TRỌNG NHẤT: CHUYỂN SANG CPU
-            // ==========================================================
-            delegate: "CPU" 
-        },
-        runningMode: "VIDEO",
-        // Thêm tùy chọn để mô hình bớt "khó tính" hơn
-        minDetectionConfidence: 0.4
-    });
-    await hatImage.decode();
-    console.log("SUCCESS: AI and Hat Image are ready!");
+// ==========================================================
+// KHỞI TẠO VÀ TẢI MÔ HÌNH CỦA FACE-API.JS
+// ==========================================================
+async function initialize() {
+    // Tải các mô hình AI cần thiết
+    // Tiny Face Detector là mô hình nhỏ và rất nhanh
+    await faceapi.nets.tinyFaceDetector.loadFromUri('/models');
+    console.log("AI Models Loaded!");
+
+    // Lấy quyền truy cập camera
+    const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
+    video.srcObject = stream;
+    
+    // Đợi video sẵn sàng
+    await new Promise(resolve => video.onloadedmetadata = resolve);
+    
+    // Mọi thứ đã sẵn sàng
+    loadingElement.classList.add("hidden");
+    startButton.disabled = false;
+    console.log("Application is ready!");
 }
 
-// Hàm chính để khởi động mọi thứ theo đúng thứ tự
-async function main() {
-    try {
-        const initializeAIPromise = initializeAI();
-        const getUserMediaPromise = navigator.mediaDevices.getUserMedia({ video: true });
+// Bắt đầu quá trình tải
+initialize();
 
-        const [_, stream] = await Promise.all([initializeAIPromise, getUserMediaPromise]);
-
-        video.srcObject = stream;
-        await new Promise((resolve) => {
-            video.addEventListener("loadeddata", resolve);
-        });
-        
-        loadingElement.classList.add("hidden");
-        startButton.disabled = false;
-        console.log("Application is fully ready. Starting game loop.");
-        
-        window.requestAnimationFrame(gameLoop);
-
-    } catch (error) {
-        console.error("LỖI KHỞI ĐỘNG ỨNG DỤNG:", error);
-        loadingElement.innerText = "Tải tài nguyên thất bại hoặc không có camera.";
-    }
-}
-
-main(); // Chạy hàm chính
-
-// Vòng lặp game và các hàm vẽ
-let lastVideoTime = -1;
-function gameLoop() {
+// ==========================================================
+// HÀM VẼ VÀ NHẬN DIỆN CHÍNH
+// ==========================================================
+async function detectAndDraw() {
+    // 1. Đồng bộ kích thước canvas với video
     if (canvasElement.width !== video.videoWidth) {
         canvasElement.width = video.videoWidth;
         canvasElement.height = video.videoHeight;
     }
-
-    if (isDetecting && video.currentTime !== lastVideoTime) {
-        lastVideoTime = video.currentTime;
-        faceDetector.detectForVideo(video, performance.now(), (result) => {
-            if (result.detections) {
-                lastDetections = result.detections;
-            }
-        });
-    }
-
+    
+    // 2. Xóa canvas
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-    if (isDetecting && lastDetections.length > 0) {
-        for (const detection of lastDetections) {
-            drawFaceBox(detection.boundingBox);
-            drawHat(detection.boundingBox);
+    // 3. Nhận diện khuôn mặt
+    const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
+
+    // 4. Vẽ kết quả lên canvas
+    if (detections && detections.length > 0) {
+        for (const detection of detections) {
+            const box = detection.box;
+            
+            // Lật tọa độ X vì video đã được lật bằng CSS
+            const flippedX = canvasElement.width - box.x - box.width;
+
+            // Vẽ khung xanh
+            canvasCtx.strokeStyle = '#00FF00';
+            canvasCtx.lineWidth = 4;
+            canvasCtx.strokeRect(flippedX, box.y, box.width, box.height);
+
+            // Vẽ nón
+            const hatWidth = box.width * 1.5;
+            const hatHeight = hatImage.height * (hatWidth / hatImage.width);
+            const hatX = flippedX - (hatWidth - box.width) / 2; // Canh giữa nón với khuôn mặt
+            const hatY = box.y - hatHeight * 0.9;
+            canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
         }
     }
-    window.requestAnimationFrame(gameLoop);
+    
+    // 5. Lặp lại
+    requestAnimationFrame(detectAndDraw);
 }
 
-function drawFaceBox(face) {
-    canvasCtx.strokeStyle = '#00FF00';
-    canvasCtx.lineWidth = 4;
-    const width = face.width * canvasElement.width;
-    const height = face.height * canvasElement.height;
-    const x = canvasElement.width - (face.originX * canvasElement.width) - width;
-    const y = face.originY * canvasElement.height;
-    canvasCtx.strokeRect(x, y, width, height);
-}
-
-function drawHat(face) {
-    const faceWidthPx = face.width * canvasElement.width;
-    const faceCenterXpx = (face.originX * canvasElement.width) + (faceWidthPx / 2);
-    const hatWidth = faceWidthPx * 1.5;
-    const hatHeight = hatImage.height * (hatWidth / hatImage.width);
-    const hatX = canvasElement.width - faceCenterXpx - (hatWidth / 2);
-    const hatY = (face.originY * canvasElement.height) - hatHeight * 0.9;
-    canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
-}
-
+// ==========================================================
+// HÀM BẮT ĐẦU GAME
+// ==========================================================
 function startGame() {
-    video.play(); // <-- THÊM LẠI DÒNG QUAN TRỌNG NHẤT NÀY
-    isDetecting = true;
+    video.play();
     startButton.style.display = 'none';
     gameInfoElement.style.display = 'flex';
-    console.log("Game started, video is playing."); // Thêm log để xác nhận
+    console.log("Game started!");
+    // Bắt đầu vòng lặp nhận diện và vẽ
+    requestAnimationFrame(detectAndDraw);
 }
-
 
 startButton.addEventListener("click", startGame);
