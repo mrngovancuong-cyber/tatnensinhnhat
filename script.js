@@ -55,28 +55,33 @@ navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
     video.addEventListener("loadeddata", predictWebcam);
 });
 
-function predictWebcam() {
-    canvasElement.width = video.videoWidth;
-    canvasElement.height = video.videoHeight;
+async function predictWebcam() {
+    // 1. Đảm bảo kích thước canvas luôn khớp với video
+    if (canvasElement.width !== video.videoWidth) {
+        canvasElement.width = video.videoWidth;
+        canvasElement.height = video.videoHeight;
+    }
 
+    // 2. Xóa toàn bộ canvas ở đầu mỗi khung hình.
+    // Đây là thay đổi quan trọng nhất!
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+    // 3. Chỉ chạy nhận diện nếu game đang hoạt động
     if (isDetecting && faceDetector) {
         faceDetector.detectForVideo(video, performance.now(), (result) => {
-            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
+            // Bây giờ, callback chỉ tập trung vào việc VẼ kết quả
             if (result.detections && result.detections.length > 0) {
-                const face = result.detections[0].boundingBox;
-                
-                // ==========================================================
-                // ĐÂY LÀ PHẦN NÂNG CẤP ĐỂ BIẾT AI CÓ HOẠT ĐỘNG KHÔNG
-                // ==========================================================
-                drawFaceBox(face); // Vẽ khung xung quanh mặt
-                // ==========================================================
-
-                drawHat(face); // Vẽ nón
+                // Cải tiến: Lặp qua tất cả các khuôn mặt phát hiện được
+                for (const detection of result.detections) {
+                    const face = detection.boundingBox;
+                    drawFaceBox(face);
+                    drawHat(face);
+                }
             }
         });
     }
 
+    // 4. Yêu cầu trình duyệt vẽ khung hình tiếp theo
     window.requestAnimationFrame(predictWebcam);
 }
 
