@@ -112,9 +112,12 @@ function drawHat(face) {
 }
 
 function startGame() {
+    video.play(); // <-- THÊM LẠI DÒNG QUAN TRỌNG NHẤT NÀY
     isDetecting = true;
     startButton.style.display = 'none';
     gameInfoElement.style.display = 'flex';
+    console.log("Game started, video is playing."); // Thêm log để xác nhận
 }
+
 
 startButton.addEventListener("click", startGame);
