@@ -14,46 +14,45 @@ let lastDetections = [];
 let isDetecting = false;
 
 const hatImage = new Image();
-hatImage.src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/birthdayhat.png';
+hatImage.src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/birthday_hat.png';
 hatImage.crossOrigin = "Anonymous";
 
-// Hàm khởi tạo AI (chỉ tải AI và ảnh)
+// Hàm khởi tạo AI
 async function initializeAI() {
     const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm");
     faceDetector = await FaceDetector.createFromOptions(vision, {
         baseOptions: {
             modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite`,
-            delegate: "GPU"
+            // ==========================================================
+            // THAY ĐỔI QUAN TRỌNG NHẤT: CHUYỂN SANG CPU
+            // ==========================================================
+            delegate: "CPU" 
         },
-        runningMode: "VIDEO"
+        runningMode: "VIDEO",
+        // Thêm tùy chọn để mô hình bớt "khó tính" hơn
+        minDetectionConfidence: 0.4
     });
-    await hatImage.decode(); // Đảm bảo ảnh đã tải xong và sẵn sàng để vẽ
+    await hatImage.decode();
     console.log("SUCCESS: AI and Hat Image are ready!");
 }
 
-// ==========================================================
-// HÀM CHÍNH ĐỂ KHỞI ĐỘNG MỌI THỨ THEO ĐÚNG THỨ TỰ
-// ==========================================================
+// Hàm chính để khởi động mọi thứ theo đúng thứ tự
 async function main() {
     try {
-        // Chạy khởi tạo AI và lấy quyền camera CÙNG LÚC
         const initializeAIPromise = initializeAI();
         const getUserMediaPromise = navigator.mediaDevices.getUserMedia({ video: true });
 
         const [_, stream] = await Promise.all([initializeAIPromise, getUserMediaPromise]);
 
-        // Gán stream cho video và đợi nó sẵn sàng
         video.srcObject = stream;
         await new Promise((resolve) => {
             video.addEventListener("loadeddata", resolve);
         });
         
-        // MỌI THỨ ĐÃ SẴN SÀNG!
         loadingElement.classList.add("hidden");
         startButton.disabled = false;
         console.log("Application is fully ready. Starting game loop.");
         
-        // Bắt đầu vòng lặp game
         window.requestAnimationFrame(gameLoop);
 
     } catch (error) {
@@ -64,9 +63,7 @@ async function main() {
 
 main(); // Chạy hàm chính
 
-// ==========================================================
-// VÒNG LẶP GAME VÀ CÁC HÀM VẼ (Giữ nguyên như phiên bản trước)
-// ==========================================================
+// Vòng lặp game và các hàm vẽ
 let lastVideoTime = -1;
 function gameLoop() {
     if (canvasElement.width !== video.videoWidth) {
