@@ -1,7 +1,7 @@
 // ==========================================================
-// THAY ĐỔI LỚN: IMPORT MỌI THỨ TỪ FILE CỤC BỘ
+// THAY ĐỔI LỚN: QUAY LẠI SỬ DỤNG CDN CHO THƯ VIỆN
 // ==========================================================
-import { FaceLandmarker, FilesetResolver } from "./mediapipe/vision_bundle.mjs";
+import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/vision_bundle.mjs";
 
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
@@ -34,13 +34,14 @@ let candles = [];
 async function initialize() {
     loadingElement.innerText = "Đang tải mô hình AI...";
     
-    // Yêu cầu thư viện tìm các file phụ trong thư mục cục bộ
+    // Yêu cầu thư viện tìm các file phụ trên CDN
     const vision = await FilesetResolver.forVisionTasks(
-        "./mediapipe/wasm"
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm"
     );
 
     faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
         baseOptions: {
+            // CHỈ CÓ FILE NÀY LÀ CỤC BỘ ĐỂ TRÁNH LỖI CORS
             modelAssetPath: `./models/face_landmarker.task`,
             delegate: "CPU"
         },
