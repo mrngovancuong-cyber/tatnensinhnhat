@@ -14,7 +14,7 @@ let lastDetections = [];
 let isDetecting = false;
 
 const hatImage = new Image();
-hatImage.src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/birthday_hat.png';
+hatImage.src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/birthdayhat.png';
 hatImage.crossOrigin = "Anonymous";
 
 // Hàm khởi tạo AI
