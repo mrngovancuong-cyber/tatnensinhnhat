@@ -1,6 +1,5 @@
 import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/vision_bundle.mjs";
 
-// --- DOM ELEMENTS ---
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
 const canvasCtx = canvasElement.getContext("2d");
@@ -12,7 +11,6 @@ const timerElement = document.getElementById("timer");
 const finalMessageElement = document.getElementById("final-message");
 const finalScoreElement = document.getElementById("final-score");
 
-// --- IMAGE ASSETS ---
 const hatImage = new Image();
 hatImage.src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/birthdayhat.png';
 hatImage.crossOrigin = "Anonymous";
@@ -22,7 +20,6 @@ candleImages[0].crossOrigin = "Anonymous";
 candleImages[1].src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/candelb2.png';
 candleImages[1].crossOrigin = "Anonymous";
 
-// --- GAME STATE & AI ---
 let faceLandmarker;
 let lastFaceResult = null;
 let gameActive = false;
@@ -31,19 +28,20 @@ let timeLeft = 60;
 let gameInterval, candleInterval;
 let candles = [];
 
-// ==========================================================
-// INITIALIZATION
-// ==========================================================
 async function initialize() {
     loadingElement.innerText = "Đang tải mô hình AI...";
-    const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm");
+    
+    // ==========================================================
+    // THAY ĐỔI QUAN TRỌNG NHẤT: SỬ DỤNG FILE .wasm CỤC BỘ
+    // ==========================================================
+    const vision = await FilesetResolver.forVisionTasks(
+        // Trỏ đến thư mục wasm mà bạn vừa tạo
+        "./wasm"
+    );
 
     faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
         baseOptions: {
-            // ==========================================================
-            // THAY ĐỔI QUAN TRỌNG NHẤT: SỬ DỤNG FILE MÔ HÌNH CỤC BỘ
-            // ==========================================================
-            modelAssetPath: `/models/face_landmarker.task`,
+            modelAssetPath: `./models/face_landmarker.task`,
             delegate: "CPU"
         },
         runningMode: "VIDEO",
@@ -67,9 +65,6 @@ initialize().catch(err => {
     console.error("Initialization failed:", err);
     loadingElement.innerText = "Lỗi! Vui lòng tải lại trang.";
 });
-
-// --- CÁC HÀM CÒN LẠI GIỮ NGUYÊN NHƯ TRƯỚC ---
-// (Bạn có thể copy paste toàn bộ phần còn lại từ file trước, hoặc dùng luôn file này)
 
 let lastVideoTime = -1;
 function gameLoop() {
