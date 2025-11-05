@@ -16,7 +16,7 @@ let isDetecting = false;
 
 // Tải hình ảnh cái nón sinh nhật
 const hatImage = new Image();
-hatImage.src = 'https://i.ibb.co/9v0z6s7/birthday-hat.png'; // Link ảnh nón PNG trong suốt
+hatImage.src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/birthday%20hat.png'; // Link ảnh nón PNG trong suốt
 
 const createFaceDetector = async () => {
     try {
