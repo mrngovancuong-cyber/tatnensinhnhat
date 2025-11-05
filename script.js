@@ -1,5 +1,3 @@
-import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/vision_bundle.mjs";
-
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
 const canvasCtx = canvasElement.getContext("2d");
@@ -20,119 +18,98 @@ candleImages[0].crossOrigin = "Anonymous";
 candleImages[1].src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/candelb2.png';
 candleImages[1].crossOrigin = "Anonymous";
 
-let faceLandmarker;
-let lastFaceResult = null;
 let gameActive = false;
 let score = 0;
 let timeLeft = 60;
 let gameInterval, candleInterval;
 let candles = [];
 
+// KHỞI TẠO VÀ TẢI MÔ HÌNH CỦA FACE-API.JS
 async function initialize() {
     loadingElement.innerText = "Đang tải mô hình AI...";
-    
-    const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm"
-    );
+    // Tải đồng thời 2 mô hình: 1 để tìm mặt, 1 để tìm 68 điểm mốc
+    await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+        faceapi.nets.faceLandmark68Net.loadFromUri('/models')
+    ]);
+    console.log("AI Models Loaded!");
 
-    faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
-        baseOptions: {
-            modelAssetPath: `./models/face_landmarker.task`,
-            delegate: "CPU"
-        },
-        runningMode: "VIDEO",
-        numFaces: 1,
-        // ==========================================================
-        // THAY ĐỔI CUỐI CÙNG: GIẢM NGƯỠNG NHẠY CẢM XUỐNG MỨC THẤP
-        // ==========================================================
-        minFaceDetectionConfidence: 0.3, // Chỉ cần chắc 30% là có mặt
-        minFacePresenceConfidence: 0.3, // Chỉ cần chắc 30% là mặt vẫn còn đó
-        minTrackingConfidence: 0.3, // Theo dõi các điểm chỉ cần chắc 30%
-    });
-    
-    const imagePromises = [hatImage.decode(), ...candleImages.map(img => img.decode())];
-    await Promise.all(imagePromises);
-    console.log("SUCCESS: AI model and all images are ready!");
-
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
     video.srcObject = stream;
-    video.addEventListener("loadeddata", () => {
-        loadingElement.classList.add("hidden");
-        startButton.disabled = false;
-        window.requestAnimationFrame(gameLoop);
-    });
+    
+    await new Promise(resolve => video.onloadedmetadata = resolve);
+    
+    loadingElement.classList.add("hidden");
+    startButton.disabled = false;
+    console.log("Application is ready!");
 }
-initialize().catch(err => {
-    console.error("Initialization failed:", err);
-    loadingElement.innerText = "Lỗi! Vui lòng tải lại trang.";
-});
+initialize();
 
-let lastVideoTime = -1;
-function gameLoop() {
-    if (video.readyState < 2) { window.requestAnimationFrame(gameLoop); return; }
+// VÒNG LẶP GAME CHÍNH VÀ NHẬN DIỆN
+async function gameLoop() {
+    if (!gameActive) return; // Dừng vòng lặp nếu game chưa bắt đầu
+
     if (canvasElement.width !== video.videoWidth) {
-        canvasElement.width = video.videoWidth; canvasElement.height = video.videoHeight;
+        canvasElement.width = video.videoWidth;
+        canvasElement.height = video.videoHeight;
     }
-    if (video.currentTime !== lastVideoTime) {
-        lastVideoTime = video.currentTime;
-        faceLandmarker.detectForVideo(video, performance.now(), (result) => { 
-            lastFaceResult = result; 
-            // Dòng chẩn đoán quan trọng, bỏ comment nếu vẫn lỗi
-            // console.log("AI Result:", result.faceLandmarks);
-        });
-    }
+    
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-    if (lastFaceResult && lastFaceResult.faceLandmarks.length > 0) {
-        const landmarks = lastFaceResult.faceLandmarks[0];
-        const { faceBox, isBlowing } = analyzeFace(landmarks);
-        drawHat(faceBox);
-        drawFaceBox(faceBox, isBlowing);
-        if (gameActive) { handleCollisions(faceBox, isBlowing); }
+
+    // Yêu cầu AI tìm khuôn mặt VÀ các điểm mốc
+    const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks();
+
+    if (detections && detections.length > 0) {
+        const face = detections[0]; // Chỉ lấy khuôn mặt đầu tiên
+        const landmarks = face.landmarks;
+        const box = face.detection.box;
+
+        // Lấy tọa độ chóp mũi (điểm thứ 31 trong mảng 68 điểm)
+        const noseTip = landmarks.positions[30]; 
+        
+        handleCollisions(noseTip);
+        drawFaceElements(box, noseTip);
     }
+    
     drawCandles();
-    window.requestAnimationFrame(gameLoop);
+    requestAnimationFrame(gameLoop);
 }
 
-function analyzeFace(landmarks) {
-    let minX = 1, maxX = 0, minY = 1, maxY = 0;
-    for (const point of landmarks) {
-        minX = Math.min(minX, point.x); maxX = Math.max(maxX, point.x);
-        minY = Math.min(minY, point.y); maxY = Math.max(maxY, point.y);
-    }
-    const faceBox = {
-        x: minX * canvasElement.width, y: minY * canvasElement.height,
-        width: (maxX - minX) * canvasElement.width, height: (maxY - minY) * canvasElement.height
-    };
-    const topLip = landmarks[13]; const bottomLip = landmarks[14];
-    const mouthOpenRatio = Math.abs(topLip.y - bottomLip.y);
-    const BLOW_THRESHOLD = 0.035; 
-    const isBlowing = mouthOpenRatio > BLOW_THRESHOLD;
-    return { faceBox, isBlowing };
-}
+// CÁC HÀM VẼ
+function drawFaceElements(box, noseTip) {
+    const flippedX = canvasElement.width - box.x - box.width;
 
-function drawHat(faceBox) {
-    const flippedX = canvasElement.width - faceBox.x - faceBox.width;
-    const hatWidth = faceBox.width * 1.5;
+    // Vẽ nón
+    const hatWidth = box.width * 1.5;
     const hatHeight = hatImage.height * (hatWidth / hatImage.width);
-    const hatX = flippedX - (hatWidth - faceBox.width) / 2;
-    const hatY = faceBox.y - hatHeight * 0.9;
+    const hatX = flippedX - (hatWidth - box.width) / 2;
+    const hatY = box.y - hatHeight * 0.9;
     canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
-}
 
-function drawFaceBox(faceBox, isBlowing) {
-    const flippedX = canvasElement.width - faceBox.x - faceBox.width;
-    canvasCtx.strokeStyle = isBlowing ? '#FF4500' : '#00FF00';
-    canvasCtx.lineWidth = 4;
-    canvasCtx.strokeRect(flippedX, faceBox.y, faceBox.width, faceBox.height);
+    // Vẽ 1 chấm đỏ ở chóp mũi để người chơi biết vị trí "con trỏ"
+    const flippedNoseX = canvasElement.width - noseTip.x;
+    canvasCtx.beginPath();
+    canvasCtx.arc(flippedNoseX, noseTip.y, 5, 0, 2 * Math.PI);
+    canvasCtx.fillStyle = 'red';
+    canvasCtx.fill();
 }
 
 function drawCandles() {
-    candles.forEach(candle => { canvasCtx.drawImage(candle.image, candle.x, candle.y, candle.width, candle.height); });
+    candles.forEach(candle => {
+        canvasCtx.drawImage(candle.image, candle.x, candle.y, candle.width, candle.height);
+    });
 }
 
-function handleCollisions(faceBox, isBlowing) {
+// LOGIC VA CHẠM BẰNG MŨI
+function handleCollisions(noseTip) {
     candles.forEach((candle, index) => {
-        if (isColliding(faceBox, candle) && isBlowing) {
+        // Lật ngược tọa độ X của mũi để so sánh với tọa độ của nến
+        const flippedNoseX = canvasElement.width - noseTip.x;
+
+        // Kiểm tra xem điểm (mũi) có nằm trong hình chữ nhật (nến) không
+        if (flippedNoseX > candle.x && flippedNoseX < candle.x + candle.width &&
+            noseTip.y > candle.y && noseTip.y < candle.y + candle.height) {
+            
             candles.splice(index, 1);
             score++;
             scoreElement.innerText = score;
@@ -140,12 +117,7 @@ function handleCollisions(faceBox, isBlowing) {
     });
 }
 
-function isColliding(rect1, rect2) {
-    const padding = 20;
-    return (rect1.x < rect2.x + rect2.width + padding && rect1.x + rect1.width > rect2.x - padding &&
-            rect1.y < rect2.y + rect2.height + padding && rect1.y + rect1.height > rect2.y - padding);
-}
-
+// CÁC HÀM QUẢN LÝ GAME
 function spawnCandle() {
     if (candles.length > 2) { candles.shift(); }
     const size = 80;
@@ -158,23 +130,29 @@ function spawnCandle() {
 function startGame() {
     score = 0; timeLeft = 60; candles = [];
     scoreElement.innerText = score; timerElement.innerText = timeLeft;
-    gameActive = true;
+    gameActive = true; // Kích hoạt vòng lặp game
+    
     startButton.style.display = 'none';
     finalMessageElement.classList.add('hidden');
     gameInfoElement.style.display = 'flex';
     video.play();
+    
     gameInterval = setInterval(() => {
         timeLeft--;
         timerElement.innerText = timeLeft;
         if (timeLeft <= 0) endGame();
     }, 1000);
+    
     candleInterval = setInterval(() => {
         if (gameActive) spawnCandle();
     }, 2000);
+
+    // Bắt đầu vòng lặp
+    requestAnimationFrame(gameLoop);
 }
 
 function endGame() {
-    gameActive = false;
+    gameActive = false; // Dừng vòng lặp game
     clearInterval(gameInterval);
     clearInterval(candleInterval);
     finalScoreElement.innerText = score;
