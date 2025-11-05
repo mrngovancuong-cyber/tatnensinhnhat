@@ -1,187 +1,84 @@
-// SỬ DỤNG LẠI CẤU TRÚC TỐT NHẤT: import từ phiên bản 0.10.12
-import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/vision_bundle.mjs";
+// Import thư viện AI với phiên bản ổn định
+import { FaceDetector, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/vision_bundle.mjs";
 
 const video = document.getElementById("webcam");
 const canvasElement = document.getElementById("output_canvas");
 const canvasCtx = canvasElement.getContext("2d");
 const startButton = document.getElementById("startButton");
 const loadingElement = document.getElementById("loading");
-const scoreElement = document.getElementById("score");
-const timerElement = document.getElementById("timer");
-const finalMessage = document.getElementById("final-message");
-const finalScoreElement = document.getElementById("final-score");
 
-let handLandmarker;
-let lastVideoTime = -1;
-let gameIsRunning = false;
-let candles = [];
-let score = 0;
-let timer = 60;
-let timerInterval, candleInterval;
+// Ẩn các yếu tố không cần thiết cho bài kiểm tra này
+document.getElementById("game-info").style.display = 'none';
+document.getElementById("final-message").style.display = 'none';
 
-const createHandLandmarker = async () => {
+let faceDetector;
+let isDetecting = false;
+
+// Tải hình ảnh cái nón sinh nhật
+const hatImage = new Image();
+hatImage.src = 'https://i.ibb.co/9v0z6s7/birthday-hat.png'; // Link ảnh nón PNG trong suốt
+
+const createFaceDetector = async () => {
     try {
-        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.12/wasm");
-        handLandmarker = await HandLandmarker.createFromOptions(vision, {
+        const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.9/wasm");
+        faceDetector = await FaceDetector.createFromOptions(vision, {
             baseOptions: {
-                // ĐÂY LÀ ĐƯỜNG DẪN MÔ HÌNH CHÍNH XÁC VÀ ỔN ĐỊNH
-                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task`,
+                // Sử dụng mô hình nhận diện khuôn mặt
+                modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite`,
                 delegate: "GPU"
             },
-            runningMode: "VIDEO",
-            numHands: 1
+            runningMode: "VIDEO"
         });
         loadingElement.classList.add("hidden");
         startButton.disabled = false;
     } catch (error) {
-        console.error("LỖI KHI TẠO HANDLANDMARKER:", error);
+        console.error("LỖI KHI TẠO FACE DETECTOR:", error);
         loadingElement.innerText = "Tải mô hình AI thất bại. Vui lòng F5 lại trang.";
     }
 };
 
-createHandLandmarker();
+createFaceDetector();
 
 navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
     video.srcObject = stream;
     video.addEventListener("loadeddata", predictWebcam);
 });
 
-function drawHandConnectors(landmarks) {
-    const connectors = [
-        [0, 1], [1, 2], [2, 3], [3, 4], // Thumb
-        [0, 5], [5, 6], [6, 7], [7, 8], // Index
-        [5, 9], [9, 10], [10, 11], [11, 12], // Middle
-        [9, 13], [13, 14], [14, 15], [15, 16], // Ring
-        [13, 17], [0, 17], [17, 18], [18, 19], [19, 20] // Pinky
-    ];
-    canvasCtx.strokeStyle = 'rgba(0, 255, 0, 0.7)';
-    canvasCtx.lineWidth = 3;
-    connectors.forEach(pair => {
-        const start = landmarks[pair[0]];
-        const end = landmarks[pair[1]];
-        canvasCtx.beginPath();
-        canvasCtx.moveTo((1 - start.x) * canvasElement.width, start.y * canvasElement.height);
-        canvasCtx.lineTo((1 - end.x) * canvasElement.width, end.y * canvasElement.height);
-        canvasCtx.stroke();
-    });
-}
-
-function drawHandLandmarks(landmarks) {
-    canvasCtx.fillStyle = 'rgba(255, 0, 0, 0.7)';
-    landmarks.forEach(point => {
-        canvasCtx.beginPath();
-        canvasCtx.arc((1 - point.x) * canvasElement.width, point.y * canvasElement.height, 5, 0, 2 * Math.PI);
-        canvasCtx.fill();
-    });
-}
-
 function predictWebcam() {
     canvasElement.width = video.videoWidth;
     canvasElement.height = video.videoHeight;
-    
-    if (lastVideoTime !== video.currentTime && handLandmarker) {
-        lastVideoTime = video.currentTime;
-        handLandmarker.detectForVideo(video, performance.now(), (result) => {
+
+    if (isDetecting && faceDetector) {
+        faceDetector.detectForVideo(video, performance.now(), (result) => {
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-            if (gameIsRunning) {
-                if (result.landmarks && result.landmarks.length > 0) {
-                    const landmarks = result.landmarks[0];
-                    drawHandConnectors(landmarks);
-                    drawHandLandmarks(landmarks);
-                    checkPinch(landmarks);
-                }
-                drawCandles();
+            if (result.detections && result.detections.length > 0) {
+                // Lấy thông tin khuôn mặt đầu tiên phát hiện được
+                const face = result.detections[0].boundingBox;
+                drawHat(face);
             }
         });
     }
+
     window.requestAnimationFrame(predictWebcam);
 }
 
-function checkPinch(landmarks) {
-    const thumbTip = landmarks[4];
-    const indexTip = landmarks[8];
-    const distance = Math.sqrt(
-        Math.pow(thumbTip.x - indexTip.x, 2) +
-        Math.pow(thumbTip.y - indexTip.y, 2)
-    );
+function drawHat(face) {
+    const hatWidth = face.width * 1.5; // Nón rộng hơn mặt một chút
+    const hatHeight = hatImage.height * (hatWidth / hatImage.width); // Giữ đúng tỷ lệ
 
-    if (distance < 0.05) {
-        const pinchX = (1 - indexTip.x) * canvasElement.width;
-        const pinchY = indexTip.y * canvasElement.height;
-        candles.forEach(candle => {
-            if (candle.state === 'lit') {
-                const distToCandle = Math.sqrt(
-                    Math.pow(pinchX - candle.x, 2) + Math.pow(pinchY - candle.y, 2)
-                );
-                if (distToCandle < 30) {
-                    candle.state = 'snuffed';
-                    score++;
-                    scoreElement.textContent = score;
-                }
-            }
-        });
-    }
+    // Tính toán vị trí để đội nón (có lật ngược theo camera)
+    const hatX = (1 - (face.originX + face.width / 2)) * canvasElement.width - (hatWidth / 2);
+    const hatY = face.originY * canvasElement.height - hatHeight * 0.9; // Đặt nón cao hơn đỉnh đầu một chút
+
+    canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
 }
 
-function spawnCandle() {
-    if (candles.filter(c => c.state === 'lit').length < 10) {
-        candles.push({
-            x: Math.random() * (canvasElement.width - 60) + 30,
-            y: Math.random() * (canvasElement.height - 60) + 30,
-            state: 'lit',
-            snuffedTime: 0
-        });
-    }
-}
 
-function drawCandles() {
-    canvasCtx.font = "40px serif";
-    const now = Date.now();
-    candles.forEach(candle => {
-        if (candle.state === 'lit') {
-            canvasCtx.fillText('🔥', candle.x, candle.y);
-        } else {
-            if (candle.snuffedTime === 0) candle.snuffedTime = now;
-            if (now - candle.snuffedTime < 1000) {
-                canvasCtx.globalAlpha = 1 - (now - candle.snuffedTime) / 1000;
-                canvasCtx.fillText('💨', candle.x, candle.y);
-                canvasCtx.globalAlpha = 1.0;
-            }
-        }
-    });
-    candles = candles.filter(candle => candle.state === 'lit' || (now - candle.snuffedTime < 1000));
-}
-
+// Hàm bắt đầu đơn giản: chỉ bật chế độ nhận diện
 function startGame() {
-    canvasElement.width = video.videoWidth;
-    canvasElement.height = video.videoHeight;
-    gameIsRunning = true;
-    score = 0;
-    timer = 60;
-    candles = [];
-    scoreElement.textContent = score;
-    timerElement.textContent = timer;
-    startButton.classList.add("hidden");
-    document.getElementById("game-info").classList.remove("hidden");
-    finalMessage.classList.add("hidden");
-    candleInterval = setInterval(spawnCandle, 1000);
-    timerInterval = setInterval(() => {
-        timer--;
-        timerElement.textContent = timer;
-        if (timer <= 0) endGame();
-    }, 1000);
-}
-
-function endGame() {
-    gameIsRunning = false;
-    clearInterval(candleInterval);
-    clearInterval(timerInterval);
-    finalScoreElement.textContent = score;
-    finalMessage.classList.remove("hidden");
-    startButton.classList.remove("hidden");
-    document.getElementById("game-info").classList.add("hidden");
+    isDetecting = true;
+    startButton.style.display = 'none'; // Ẩn nút bắt đầu đi
 }
 
 startButton.addEventListener("click", startGame);
-document.getElementById("game-info").classList.add("hidden");
