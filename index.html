@@ -12,12 +12,25 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="intro-modal">
+    <!-- MÀN HÌNH HƯỚNG DẪN BƯỚC 1 -->    
+    <div id="intro-modal-1">
         <div class="modal-content">
-            <p>Một trò chơi nhỏ được tạo ra chỉ dành riêng cho bạn!</p>
+            <p>Một trò chơi nhỏ được tạo ra chỉ dành riêng cho bạn trong ngày đặc biệt này!</p>
             <p>Hãy thổi tắt thật nhiều cây nến để ghi điểm cho mình trước khi chúng biến mất.</p>
             <p>Nhớ ngồi ở nơi có đủ sáng để camera nhận diện bạn tốt nhất nhé!</p>
-            <p class="wish">Chúc bạn thật nhiều niềm vui!</p>
+            <p class="wish">Chúc bạn sinh nhật thật nhiều niềm vui!</p>
+            <button id="readyButton">Tiếp tục</button>
+        </div>
+    </div>
+
+    <!-- MÀN HÌNH NHẬP THÔNG TIN BƯỚC 2 (BAN ĐẦU BỊ ẨN) -->
+    <div id="intro-modal-2" class="hidden">
+        <div class="modal-content">
+            <label for="nameInput">Cho tôi biết tên của bạn:</label>
+            <input type="text" id="nameInput" placeholder="Ví dụ: Cường Văn">
+            <label for="ageInput">Cho tôi biết tuổi mới của bạn:</label>
+            <input type="number" id="ageInput" placeholder="Ví dụ: 25">
+            <p class="thanks">Cảm ơn. Bạn thật tuyệt vời!</p>
             <button id="readyButton">Sẵn sàng</button>
         </div>
     </div>
@@ -43,9 +56,9 @@
 
         <!-- Khối chứa lời chúc cuối game -->
         <div id="final-wish-container" class="hidden">
-            <p id="wish-line-1">Sinh nhật tuổi 35</p>
+            <p id="wish-line-1">Sinh nhật tuổi <span id="age-text">Y</span></p>
             <p id="wish-line-2">
-                Chúc bạn hạnh phúc và thành công
+                Chúc <span id="name-text">bạn</span> hạnh phúc và thành công
                 <br>
                 gấp <strong>X</strong> lần
             </p>

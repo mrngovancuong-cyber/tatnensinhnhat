@@ -17,7 +17,7 @@ body {
     height: 56.25vw;
     max-height: 100vh;
     max-width: 177.78vh;
-    background-image: url('https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/1.png');
+    background-image: url('http://raw.githubusercontent.com/mrngovancuong-cyber/image-data/fa6b69cd1303533e6e1525823b74b0d2630edbcb/1.png');
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -76,7 +76,7 @@ body {
 #final-wish-container {
     position: absolute;
     /* Canh giữa vào tâm của nửa bên phải màn hình */
-    left: 70%;
+    left: 68%;
     top: 50%;
     transform: translate(-50%, -50%);
     
@@ -140,4 +140,25 @@ body {
 }
 #readyButton:hover {
     background-color: #2ecc71;
+}
+
+/* THÊM CÁC ĐỊNH DẠNG MỚI CHO FORM NHẬP LIỆU */
+.modal-content label {
+    font-size: 1.5em;
+    margin-top: 15px;
+}
+.modal-content input {
+    font-family: 'Story Script', cursive;
+    font-size: 1.5em;
+    width: 80%;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 5px;
+    border: 2px solid #f1c40f;
+    text-align: center;
+}
+.modal-content .thanks {
+    font-size: 1.2em;
+    margin-top: 15px;
+    color: #bdc3c7;
 }

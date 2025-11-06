@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- DOM ELEMENTS & GLOBAL VARIABLES ---
+    // --- LẤY TẤT CẢ CÁC PHẦN TỬ DOM CẦN THIẾT ---
     const video = document.getElementById("webcam");
     const canvasElement = document.getElementById("output_canvas");
     const canvasCtx = canvasElement.getContext("2d");
@@ -15,9 +15,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const bgMusic = document.getElementById("bg-music");
     const cheerSound = document.getElementById("cheer-sound");
     const splatSound = document.getElementById("splat-sound");
-    const introModal = document.getElementById("intro-modal");
+    const introModal1 = document.getElementById("intro-modal-1");
+    const introModal2 = document.getElementById("intro-modal-2");
+    const nextButton = document.getElementById("nextButton");
     const readyButton = document.getElementById("readyButton");
+    const nameInput = document.getElementById("nameInput");
+    const ageInput = document.getElementById("ageInput");
+    const ageText = document.getElementById("age-text");
+    const nameText = document.getElementById("name-text");
     
+    // --- BIẾN TOÀN CỤC ---
+    let userName = "bạn";
+    let userAge = "Y";
+
     let gameActive = false; let score = 0; let timeLeft = 35;
     let gameInterval, candleInterval;
     let confettiInterval = null;
@@ -39,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // KHỞI TẠO CHÍNH
     // ==========================================================
     async function run() {
-        try {
+	try {
             startButton.style.display = 'none';
             loadingElement.classList.remove('hidden');
 
@@ -79,8 +89,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // Gắn sự kiện cho các nút hướng dẫn
+    nextButton.addEventListener('click', () => {
+        introModal1.classList.add('hidden');
+        introModal2.classList.remove('hidden');
+    });
+
     readyButton.addEventListener('click', () => {
-        introModal.classList.add('hidden');
+        const nameValue = nameInput.value.trim();
+        const ageValue = ageInput.value.trim();
+        if (nameValue) {
+            userName = nameValue.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        }
+        if (ageValue) { userAge = ageValue; }
+        introModal2.classList.add('hidden');
         run();
     });
 
@@ -224,38 +246,37 @@ function startGame() {
 // ==========================================================
 // THAY THẾ HÀM CŨ BẰNG HÀM MỚI NÀY
 // ==========================================================
-async function endGame() {
+function endGame() {
     gameActive = false;
     clearInterval(gameInterval); clearInterval(candleInterval);
     candles = [];
-    finalWishScore.innerText = score;
     
-    // Chuyển sang bố cục 2 cột (trạng thái kết thúc)
-    gameContainer.classList.add('end-state');
-    finalWishContainer.classList.remove('hidden');
-    
-    gameInfoElement.style.display = 'none';
-    startButton.style.display = 'none';
+    ageText.innerText = userAge;
+        nameText.innerText = userName;
+        finalWishScore.innerText = score;
+        
+        gameContainer.classList.add('end-state');
+        finalWishContainer.classList.remove('hidden');
+        gameInfoElement.style.display = 'none';
+        startButton.style.display = 'none';
 
-    // Kịch bản bánh kem & pháo hoa
-    endGameScene.active = true;
-    cheerSound.play();
-    endGameScene.showWinCake = true;
-    confettiInterval = setInterval(() => {
-        confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0, y: 1 } });
-        confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1, y: 1 } });
-    }, 400);
-    
-    setTimeout(() => {
-        endGameScene.showWinCake = false;
-        splatSound.play();
-        endGameScene.showLoseCake = true;
+        endGameScene.active = true;
+        cheerSound.play();
+        endGameScene.showWinCake = true;
+        confettiInterval = setInterval(() => {
+            confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0, y: 1 } });
+            confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1, y: 1 } });
+        }, 400);
         setTimeout(() => {
-            endGameScene.showLoseCake = false;
-            endGameScene.active = false;
-        }, 5000);
-    }, 8000);
-}
+            endGameScene.showWinCake = false;
+            splatSound.play();
+            endGameScene.showLoseCake = true;
+            setTimeout(() => {
+                endGameScene.showLoseCake = false;
+                endGameScene.active = false;
+            }, 5000);
+        }, 8000);
+    }
     
     startButton.addEventListener("click", startGame);
 });
