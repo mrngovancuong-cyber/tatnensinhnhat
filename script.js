@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- DOM ELEMENTS & GLOBAL VARIABLES ---
     const video = document.getElementById("webcam");
     const canvasElement = document.getElementById("output_canvas");
     const canvasCtx = canvasElement.getContext("2d");
@@ -15,28 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const cheerSound = document.getElementById("cheer-sound");
     const splatSound = document.getElementById("splat-sound");
 
-    let gameActive = false;
-    let score = 0;
-    let timeLeft = 30;
-    let gameInterval, candleInterval;
-    let candles = [];
+    let gameActive = false; let score = 0; let timeLeft = 30;
+    let gameInterval, candleInterval; let candles = [];
     
-    // --- BIẾN TRẠNG THÁI MỚI CHO KỊCH BẢN CUỐI GAME ---
     let endGameScene = {
-        active: false,
-        showWinCake: false,
-        showLoseCake: false,
-        faceData: null
+        active: false, showWinCake: false, showLoseCake: false, faceData: null
     };
 
-    const hatImage = new Image();
-    const candleImages = [new Image(), new Image()];
-    const cakeWinImage = new Image();
-    const cakeLoseImage = new Image();
+    const hatImage = new Image(); const candleImages = [new Image(), new Image()];
+    const cakeWinImage = new Image(); const cakeLoseImage = new Image();
 
-    // ==========================================================
-    // KHỞI TẠO CHÍNH (Không thay đổi)
-    // ==========================================================
     async function run() {
         try {
             startButton.disabled = true;
@@ -74,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     run();
 
     // ==========================================================
-    // VÒNG LẶP GAME (SỬA LẠI ĐỂ HỖ TRỢ KỊCH BẢN CUỐI)
+    // VÒNG LẶP GAME (SỬA LẠI THỨ TỰ VẼ)
     // ==========================================================
     async function gameLoop() {
         if (video.paused || video.ended) { requestAnimationFrame(gameLoop); return; }
@@ -87,18 +74,22 @@ document.addEventListener('DOMContentLoaded', () => {
         
         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
         
-        if (gameActive) {
-            if (detections && detections.length > 0) {
-                handleCollisions(detections[0].landmarks.positions[30]);
-            }
-            drawCandles();
-        }
-        
+        // Luôn vẽ khuôn mặt và nón trước
         if (detections && detections.length > 0) {
             const face = detections[0];
-            // Lưu lại dữ liệu khuôn mặt để dùng trong kịch bản cuối game
-            endGameScene.faceData = face;
-            drawFaceElements(face.detection.box, face.landmarks.positions[30]);
+            endGameScene.faceData = face; // Lưu dữ liệu để dùng sau
+            const mouthCenter = getMouthCenter(face.landmarks);
+            drawFaceElements(face.detection.box, mouthCenter);
+        }
+
+        // Logic game chỉ chạy khi đang active
+        if (gameActive) {
+            if (detections && detections.length > 0) {
+                const mouthCenter = getMouthCenter(detections[0].landmarks);
+                handleCollisions(mouthCenter);
+            }
+            // --- SỬA LỖI: Vẽ nến Ở ĐÂY để chúng hiện trên cùng ---
+            drawCandles(); 
         }
 
         // Vẽ kịch bản cuối game nếu đang hoạt động
@@ -109,15 +100,41 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(gameLoop);
     }
     
-    // (Các hàm vẽ và logic game khác giữ nguyên)
-    function drawFaceElements(box, mouthCenter) { /* ... */ }
-    function drawCandles() { /* ... */ }
-    function handleCollisions(mouthCenter) { /* ... */ }
-    function spawnCandle() { /* ... */ }
+    // ==========================================================
+    // SỬA LẠI LOGIC ĐIỀU KHIỂN BẰNG MIỆNG
+    // ==========================================================
+    function getMouthCenter(landmarks) {
+        const topLip = landmarks.positions[62];
+        const bottomLip = landmarks.positions[66];
+        return { x: (topLip.x + bottomLip.x) / 2, y: (topLip.y + bottomLip.y) / 2 };
+    }
+    
+    function drawFaceElements(box, mouthCenter) {
+        const flippedX = canvasElement.width - box.x - box.width;
+        const hatWidth = box.width * 1.5; const hatHeight = hatImage.height * (hatWidth / hatImage.width);
+        const hatX = flippedX - (hatWidth - box.width) / 2; const hatY = box.y - hatHeight * 0.9;
+        canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
+        
+        // Chấm đỏ giờ sẽ ở giữa miệng
+        const flippedMouthX = canvasElement.width - mouthCenter.x;
+        canvasCtx.beginPath();
+        canvasCtx.arc(flippedMouthX, mouthCenter.y, 5, 0, 2 * Math.PI);
+        canvasCtx.fillStyle = 'red';
+        canvasCtx.fill();
+    }
+    
+    function drawCandles() { candles.forEach(c => canvasCtx.drawImage(c.image, c.x, c.y, c.width, c.height)); }
+    
+    function handleCollisions(mouthCenter) {
+        candles.forEach((candle, index) => {
+            const flippedMouthX = canvasElement.width - mouthCenter.x;
+            if (flippedMouthX > candle.x && flippedMouthX < candle.x + candle.width &&
+                mouthCenter.y > candle.y && mouthCenter.y < candle.y + candle.height) {
+                candles.splice(index, 1); score++; scoreElement.innerText = score;
+            }
+        });
+    }
 
-    // ==========================================================
-    // HÀM VẼ MỚI CHO KỊCH BẢN CUỐI GAME
-    // ==========================================================
     function drawEndGameScene() {
         if (!endGameScene.faceData) return;
         const box = endGameScene.faceData.detection.box;
@@ -141,12 +158,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ==========================================================
-    // CÁC HÀM QUẢN LÝ GAME (SỬA LẠI START & END)
-    // ==========================================================
+    function spawnCandle() {
+        if (candles.length > 2) { candles.shift(); }
+        const size = 80; let newCandle, isOverlapping; let maxTries = 10;
+        do {
+            isOverlapping = false;
+            const x = Math.random() * (canvasElement.width - size - 100) + 50;
+            const y = Math.random() * (canvasElement.height - size - 100) + 50;
+            newCandle = { x, y, width: size, height: size };
+            for (const c of candles) { if (Math.hypot(newCandle.x - c.x, newCandle.y - c.y) < size * 1.5) { isOverlapping = true; break; } }
+            maxTries--;
+        } while (isOverlapping && maxTries > 0);
+        if (!isOverlapping) {
+             newCandle.image = candleImages[Math.floor(Math.random() * candleImages.length)];
+             candles.push(newCandle);
+        }
+    }
+    
     function startGame() {
         score = 0; timeLeft = 30; candles = [];
-        endGameScene.active = false; // Reset kịch bản cuối
+        endGameScene.active = false;
         scoreElement.innerText = score; timerElement.innerText = timeLeft;
         gameActive = true;
         
@@ -167,42 +198,29 @@ document.addEventListener('DOMContentLoaded', () => {
         gameActive = false;
         clearInterval(gameInterval); clearInterval(candleInterval);
         candles = [];
-        
         finalWishScore.innerText = score;
         finalWishContainer.classList.remove('hidden');
-        
         gameInfoElement.style.display = 'none';
         startButton.style.display = 'none';
 
-        // --- BẮT ĐẦU KỊCH BẢN CUỐI GAME ---
         endGameScene.active = true;
-
-        // Hiệu ứng 1: Bánh thắng & Vỗ tay
         cheerSound.play();
         endGameScene.showWinCake = true;
         
+        // ==========================================================
+        // SỬA LẠI THỜI GIAN HIỂN THỊ BÁNH KEM
+        // ==========================================================
         setTimeout(() => {
-            // Hiệu ứng 2: Bánh thua & Âm thanh ụp
-            endGameScene.showWinCake = false; // Ẩn bánh thắng
+            endGameScene.showWinCake = false;
             splatSound.play();
             endGameScene.showLoseCake = true;
             
             setTimeout(() => {
-                // Kết thúc kịch bản
                 endGameScene.showLoseCake = false;
                 endGameScene.active = false;
-                // Có thể hiện lại nút Bắt Đầu ở đây nếu muốn chơi lại
-                // startButton.style.display = 'block';
-            }, 3000); // Bánh thua tồn tại 3 giây
-        }, 3000); // Bánh thắng tồn tại 3 giây
+            }, 6000); // Bánh thua tồn tại 6 giây
+        }, 6000); // Bánh thắng tồn tại 6 giây
     }
     
     startButton.addEventListener("click", startGame);
-
-    // Dán lại các hàm không thay đổi để cho chắc chắn
-    function getMouthCenter(landmarks) { const topLip = landmarks.positions[62]; const bottomLip = landmarks.positions[66]; return { x: (topLip.x + bottomLip.x) / 2, y: (topLip.y + bottomLip.y) / 2 }; }
-    function drawFaceElements(box, mouthCenter) { const flippedX = canvasElement.width - box.x - box.width; const hatWidth = box.width * 1.5; const hatHeight = hatImage.height * (hatWidth / hatImage.width); const hatX = flippedX - (hatWidth - box.width) / 2; const hatY = box.y - hatHeight * 0.9; canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight); const flippedMouthX = canvasElement.width - mouthCenter.x; canvasCtx.beginPath(); canvasCtx.arc(flippedMouthX, mouthCenter.y, 5, 0, 2 * Math.PI); canvasCtx.fillStyle = 'red'; canvasCtx.fill(); }
-    function handleCollisions(mouthCenter) { candles.forEach((candle, index) => { const flippedMouthX = canvasElement.width - mouthCenter.x; if (flippedMouthX > candle.x && flippedMouthX < candle.x + candle.width && mouthCenter.y > candle.y && mouthCenter.y < candle.y + candle.height) { candles.splice(index, 1); score++; scoreElement.innerText = score; } }); }
-    function spawnCandle() { if (candles.length > 2) { candles.shift(); } const size = 80; let newCandle, isOverlapping; let maxTries = 10; do { isOverlapping = false; const x = Math.random() * (canvasElement.width - size - 100) + 50; const y = Math.random() * (canvasElement.height - size - 100) + 50; newCandle = { x, y, width: size, height: size }; for (const existingCandle of candles) { if (Math.hypot(newCandle.x - existingCandle.x, newCandle.y - existingCandle.y) < size * 1.5) { isOverlapping = true; break; } } maxTries--; } while (isOverlapping && maxTries > 0); if (!isOverlapping) { const randomImage = candleImages[Math.floor(Math.random() * candleImages.length)]; newCandle.image = randomImage; candles.push(newCandle); } }
-
 });
