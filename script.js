@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function startGame() {
-        score = 0; timeLeft = 30; candles = [];
+        score = 0; timeLeft = 35; candles = [];
         endGameScene.active = false;
         scoreElement.innerText = score; timerElement.innerText = timeLeft;
         gameActive = true;
