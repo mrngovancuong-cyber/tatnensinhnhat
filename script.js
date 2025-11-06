@@ -221,21 +221,6 @@ document.addEventListener('DOMContentLoaded', () => {
         cheerSound.play();
         endGameScene.showWinCake = true;
         // ==========================================================
-        // SỬA LẠI THỜI GIAN HIỂN THỊ BÁNH KEM
-        // ==========================================================
-        setTimeout(() => {
-            endGameScene.showWinCake = false;
-            splatSound.play();
-            endGameScene.showLoseCake = true;
-            
-            setTimeout(() => {
-                endGameScene.showLoseCake = false;
-                endGameScene.active = false;
-            }, 5000); // Bánh thua tồn tại 5 giây
-        }, 8000); // Bánh thắng tồn tại 8 giây
-    }
-
-	// ==========================================================
         // KÍCH HOẠT PHÁO HOA LIÊN TỤC
         // ==========================================================
         confettiInterval = setInterval(() => {
@@ -254,6 +239,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 origin: { x: 1, y: 1 }
             });
         }, 400); // Cứ 400ms bắn một lần
+	// ==========================================================
+        // SỬA LẠI THỜI GIAN HIỂN THỊ BÁNH KEM
+        // ==========================================================
+        setTimeout(() => {
+            endGameScene.showWinCake = false;
+            splatSound.play();
+            endGameScene.showLoseCake = true;
+            
+            setTimeout(() => {
+                endGameScene.showLoseCake = false;
+                endGameScene.active = false;
+            }, 5000); // Bánh thua tồn tại 5 giây
+        }, 8000); // Bánh thắng tồn tại 8 giây
+    }
+
+	
 
        
     
