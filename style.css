@@ -1,5 +1,5 @@
 body {
-    font-family: 'Story Script', cursive; /* Áp dụng font mặc định */
+    font-family: 'Story Script', cursive;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -51,27 +51,23 @@ body {
 #loading {
     position: absolute; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 2em; /* Tăng kích thước font loading */
+    font-size: 2em;
     color: #fff; z-index: 20;
-    /* font-family giữ nguyên là 'Story Script' từ body */
 }
 
 #ui-container { margin-top: 20px; width: 100%; }
 
-/* ========================================================== */
-/* ÁP DỤNG FONT STORY SCRIPT                                */
-/* ========================================================== */
 #game-info {
     display: flex; justify-content: space-around;
-    font-size: 2.2em; /* Tăng kích thước font */
+    font-size: 2.2em;
     margin-bottom: 15px;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
 #startButton {
-    font-family: 'Story Script', cursive; /* Áp dụng font */
-    padding: 15px 40px; /* Tăng padding */
-    font-size: 1.8em; /* Tăng kích thước font */
+    font-family: 'Story Script', cursive;
+    padding: 15px 40px;
+    font-size: 1.8em;
     cursor: pointer;
     background-color: #e67e22; color: white; border: none;
     border-radius: 5px; transition: background-color 0.3s;
@@ -87,7 +83,10 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    color: #ffd700;
+    /* ========================================================== */
+    /* THAY ĐỔI MÀU CHỮ                                         */
+    /* ========================================================== */
+    color: #E91E63; /* Màu hồng đỏ rực rỡ */
     text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.7);
 }
 

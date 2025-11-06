@@ -16,37 +16,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let gameActive = false; let score = 0; let timeLeft = 30;
     let gameInterval, candleInterval; let candles = [];
-    const hatImage = new Image(); const candleImages = [new Image(), new Image()];
-    const cakeWinImage = new Image(); const cakeLoseImage = new Image();
+    let bodyPixModel = null; // Biến cho mô hình BodyPix
 
+    // Tải tất cả hình ảnh cần thiết
+    const hatImage = new Image();
+    const candleImages = [new Image(), new Image()];
+    const cakeWinImage = new Image();
+    const cakeLoseImage = new Image();
+    const backgroundImage = new Image(); // Ảnh nền video
+
+    // ==========================================================
+    // KHỞI TẠO CHÍNH (THÊM BODYPIX)
+    // ==========================================================
     async function run() {
         try {
             startButton.disabled = true;
             loadingElement.innerText = "Đang tải mô hình AI...";
-            await Promise.all([
+            const modelPromises = [
                 faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
-                faceapi.nets.faceLandmark68Net.loadFromUri('/models')
-            ]);
+                faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
+                bodyPix.load() // Tải mô hình BodyPix
+            ];
+
             loadingElement.innerText = "Đang tải hình ảnh...";
             const createImagePromise = (image, src) => new Promise((resolve, reject) => {
                 image.src = src; image.crossOrigin = "Anonymous";
                 image.onload = resolve; image.onerror = reject;
             });
-            await Promise.all([
+            const imagePromises = [
                 createImagePromise(hatImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/birthdayhat.png'),
                 createImagePromise(candleImages[0], 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/candleb1.png'),
                 createImagePromise(candleImages[1], 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/candelb2.png'),
                 createImagePromise(cakeWinImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/cnadleb3.png'),
                 createImagePromise(cakeLoseImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/cake.png'),
-            ]);
+                createImagePromise(backgroundImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/b.png')
+            ];
+            
+            // Đợi tất cả mô hình và ảnh tải xong
+            const [loadedModels] = await Promise.all([Promise.all(modelPromises), Promise.all(imagePromises)]);
+            bodyPixModel = loadedModels[2]; // Gán mô hình bodyPix đã tải
+            console.log("SUCCESS: All models and images are loaded!");
+            
             loadingElement.innerText = "Đang khởi động camera...";
             const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
             video.srcObject = stream;
             await new Promise(resolve => { video.onloadedmetadata = resolve; });
+            
             loadingElement.classList.add("hidden");
             startButton.disabled = false;
             video.play();
-            setTimeout(() => { bgMusic.play().catch(e => console.log("Không thể tự phát nhạc.")); }, 2000);
+            setTimeout(() => { bgMusic.play().catch(e => {}); }, 2000);
             requestAnimationFrame(gameLoop);
         } catch (error) {
             console.error("Initialization Failed:", error);
@@ -54,45 +73,69 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     run();
-    
+
+    // ==========================================================
+    // VÒNG LẶP GAME (THÊM LOGIC TÁCH NỀN)
+    // ==========================================================
     async function gameLoop() {
-        if (video.paused || video.ended) { requestAnimationFrame(gameLoop); return; }
-        if (canvasElement.width !== video.videoWidth) {
-            canvasElement.width = video.videoWidth; canvasElement.height = video.videoHeight;
+        if (video.paused || video.ended || !bodyPixModel) {
+            requestAnimationFrame(gameLoop); return;
         }
+        if (canvasElement.width !== video.videoWidth) {
+            canvasElement.width = video.videoWidth;
+            canvasElement.height = video.videoHeight;
+        }
+        
+        // --- BƯỚC 3.1: TÁCH NỀN ---
+        const segmentation = await bodyPixModel.segmentPerson(video);
+        
+        // --- BƯỚC 3.2: VẼ LẠI MỌI THỨ THEO LỚP ---
+        // Lớp 1: Vẽ nền ảo
+        canvasCtx.drawImage(backgroundImage, 0, 0, canvasElement.width, canvasElement.height);
+        
+        // Lớp 2: Chỉ vẽ người từ video lên trên nền ảo
+        const foreground = bodyPix.toMask(segmentation);
+        canvasCtx.save();
+        canvasCtx.globalCompositeOperation = 'destination-in';
+        canvasCtx.drawImage(foreground, 0, 0, canvasElement.width, canvasElement.height);
+        canvasCtx.globalCompositeOperation = 'source-atop';
+        canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
+        canvasCtx.restore();
+
+        // --- BƯỚC 3.3: CHẠY LOGIC GAME NHƯ CŨ ---
         const detectorOptions = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 });
         const detections = await faceapi.detectAllFaces(video, detectorOptions).withFaceLandmarks();
-        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        
         if (gameActive) {
             if (detections && detections.length > 0) {
-                const mouthCenter = getMouthCenter(detections[0].landmarks);
-                handleCollisions(mouthCenter);
+                handleCollisions(detections[0].landmarks.positions[30]);
             }
             drawCandles();
         }
+        
         if (detections && detections.length > 0) {
-            const face = detections[0];
-            const mouthCenter = getMouthCenter(face.landmarks);
-            drawFaceElements(face.detection.box, mouthCenter);
+            drawFaceElements(detections[0].detection.box, detections[0].landmarks.positions[30]);
         }
+        
         requestAnimationFrame(gameLoop);
     }
-    function getMouthCenter(landmarks) {
-        const topLip = landmarks.positions[62]; const bottomLip = landmarks.positions[66];
-        return { x: (topLip.x + bottomLip.x) / 2, y: (topLip.y + bottomLip.y) / 2 };
-    }
+    
+    // (Các hàm còn lại gần như giữ nguyên)
     function drawFaceElements(box, mouthCenter) {
         const flippedX = canvasElement.width - box.x - box.width;
-        const hatWidth = box.width * 1.5; const hatHeight = hatImage.height * (hatWidth / hatImage.width);
-        const hatX = flippedX - (hatWidth - box.width) / 2; const hatY = box.y - hatHeight * 0.9;
+        const hatWidth = box.width * 1.5;
+        const hatHeight = hatImage.height * (hatWidth / hatImage.width);
+        const hatX = flippedX - (hatWidth - box.width) / 2;
+        const hatY = box.y - hatHeight * 0.9;
         canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
+
         const flippedMouthX = canvasElement.width - mouthCenter.x;
-        canvasCtx.beginPath(); canvasCtx.arc(flippedMouthX, mouthCenter.y, 5, 0, 2 * Math.PI);
-        canvasCtx.fillStyle = 'red'; canvasCtx.fill();
+        canvasCtx.beginPath();
+        canvasCtx.arc(flippedMouthX, mouthCenter.y, 5, 0, 2 * Math.PI);
+        canvasCtx.fillStyle = 'red';
+        canvasCtx.fill();
     }
-    function drawCandles() {
-        candles.forEach(candle => { canvasCtx.drawImage(candle.image, candle.x, candle.y, candle.width, candle.height); });
-    }
+    function drawCandles() { candles.forEach(c => canvasCtx.drawImage(c.image, c.x, c.y, c.width, c.height)); }
     function handleCollisions(mouthCenter) {
         candles.forEach((candle, index) => {
             const flippedMouthX = canvasElement.width - mouthCenter.x;
@@ -110,61 +153,40 @@ document.addEventListener('DOMContentLoaded', () => {
             const x = Math.random() * (canvasElement.width - size - 100) + 50;
             const y = Math.random() * (canvasElement.height - size - 100) + 50;
             newCandle = { x, y, width: size, height: size };
-            for (const existingCandle of candles) {
-                if (Math.hypot(newCandle.x - existingCandle.x, newCandle.y - existingCandle.y) < size * 1.5) {
-                    isOverlapping = true; break;
-                }
-            }
+            for (const c of candles) { if (Math.hypot(newCandle.x - c.x, newCandle.y - c.y) < size * 1.5) { isOverlapping = true; break; } }
             maxTries--;
         } while (isOverlapping && maxTries > 0);
         if (!isOverlapping) {
-             const randomImage = candleImages[Math.floor(Math.random() * candleImages.length)];
-             newCandle.image = randomImage; candles.push(newCandle);
+             newCandle.image = candleImages[Math.floor(Math.random() * candleImages.length)];
+             candles.push(newCandle);
         }
     }
-    
     function startGame() {
         score = 0; timeLeft = 30; candles = [];
         scoreElement.innerText = score; timerElement.innerText = timeLeft;
         gameActive = true;
-        
         startButton.style.display = 'none';
         finalWishContainer.classList.add('hidden');
-        gameInfoElement.style.display = 'flex';
-        
+        gameInfoElement.classList.remove('hidden');
         gameInterval = setInterval(() => {
             timeLeft--;
             timerElement.innerText = timeLeft;
             if (timeLeft <= 0) endGame();
         }, 1000);
-        
-        candleInterval = setInterval(() => {
-            if (gameActive) spawnCandle();
-        }, 2500);
+        candleInterval = setInterval(() => { if (gameActive) spawnCandle(); }, 2500);
     }
-
     async function endGame() {
         gameActive = false;
-        clearInterval(gameInterval);
-        clearInterval(candleInterval);
+        clearInterval(gameInterval); clearInterval(candleInterval);
         candles = [];
-        
         finalWishScore.innerText = score;
         finalWishContainer.classList.remove('hidden');
-        
-        gameInfoElement.style.display = 'none';
-        // ==========================================================
-        // THAY ĐỔI: CHO NÚT BẮT ĐẦU BIẾN MẤT
-        // ==========================================================
+        gameInfoElement.classList.add('hidden');
         startButton.style.display = 'none';
-
         await new Promise(r => setTimeout(r, 100));
-        const detectorOptions = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 });
-        const detections = await faceapi.detectAllFaces(video, detectorOptions).withFaceLandmarks();
-
+        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 })).withFaceLandmarks();
         if (detections && detections.length > 0) {
-            const face = detections[0]; const box = face.detection.box;
-
+            const box = detections[0].detection.box;
             cheerSound.play();
             const cakeWinWidth = box.width * 2;
             const cakeWinHeight = cakeWinImage.height * (cakeWinWidth / cakeWinImage.width);
@@ -172,7 +194,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const cakeWinX = flippedX + (box.width / 2) - (cakeWinWidth / 2);
             const cakeWinY = box.y + box.height;
             canvasCtx.drawImage(cakeWinImage, cakeWinX, cakeWinY, cakeWinWidth, cakeWinHeight);
-            
             setTimeout(() => {
                 splatSound.play();
                 const cakeLoseWidth = box.width * 1.2;
@@ -182,13 +203,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 canvasCtx.globalAlpha = 0.7;
                 canvasCtx.drawImage(cakeLoseImage, cakeLoseX, cakeLoseY, cakeLoseWidth, cakeLoseHeight);
                 canvasCtx.globalAlpha = 1.0;
-                
-                setTimeout(() => {
-                    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-                    if (detections && detections.length > 0) {
-                         drawFaceElements(box, face.landmarks.positions[30]);
-                    }
-                }, 3000);
+                setTimeout(() => {}, 3000);
             }, 3000);
         }
     }
