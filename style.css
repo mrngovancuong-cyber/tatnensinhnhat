@@ -73,16 +73,69 @@ body {
 .main-container { display: flex; align-items: center; justify-content: center; gap: 50px; width: 100%; padding: 20px; }
 .game-container { display: flex; flex-direction: column; align-items: center; background-color: rgba(44, 62, 80, 0.8); padding: 20px; border-radius: 15px; }
 #game-wrapper { position: relative; width: 800px; height: 600px; border: 5px solid #f1c40f; border-radius: 10px; background: #000; }
-#webcam, #output_canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 5px; }
+
+#webcam, #output_canvas {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%; border-radius: 5px;
+}
 #webcam { transform: scaleX(-1); } 
 #output_canvas { z-index: 10; }
-#loading { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2em; color: #fff; z-index: 20; }
-#ui-container { margin-top: 20px; width: 100%; }
-#game-info { display: flex; justify-content: space-around; font-size: 2.2em; margin-bottom: 15px; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); }
-#startButton { font-family: 'Story Script', cursive; padding: 15px 40px; font-size: 1.8em; cursor: pointer; background-color: #e67e22; color: white; border: none; border-radius: 5px; transition: background-color 0.3s; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5); }
+
+#loading {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2em;
+    color: #fff; z-index: 20;
+}
+
+#ui-container {
+    margin-top: 20px;
+    width: 100%;
+    display: flex;
+    flex-direction: column; /* Sắp xếp các phần tử theo chiều dọc */
+    align-items: center; /* Canh giữa theo chiều ngang */
+}
+
+#game-info {
+    display: flex;
+    justify-content: space-around;
+    width: 100%; /* Đảm bảo nó chiếm đủ chiều rộng */
+    font-size: 2.2em;
+    margin-bottom: 15px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+#startButton {
+    font-family: 'Story Script', cursive;
+    padding: 15px 40px;
+    font-size: 1.8em;
+    cursor: pointer;
+    background-color: #e67e22; color: white; border: none;
+    border-radius: 5px; transition: background-color 0.3s;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}
 #startButton:disabled { background-color: #7f8c8d; cursor: not-allowed; }
 #startButton:not(:disabled):hover { background-color: #d35400; }
+
 .hidden { display: none !important; }
-#final-wish-container { display: flex; flex-direction: column; justify-content: center; align-items: center; color: #E91E63; text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.7); }
-#wish-line-1 { font-family: 'Fleur De Leah', cursive; font-size: 80px; margin: 0; }
-#wish-line-2 { font-family: 'Story Script', cursive; font-size: 50px; margin-top: 20px; }
+
+#final-wish-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: #E91E63;
+    text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.7);
+}
+
+#wish-line-1 {
+    font-family: 'Fleur De Leah', cursive;
+    font-size: 80px;
+    margin: 0;
+}
+
+#wish-line-2 {
+    font-family: 'Story Script', cursive;
+    font-size: 50px;
+    margin-top: 20px;
+}
