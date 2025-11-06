@@ -76,7 +76,7 @@ body {
 #final-wish-container {
     position: absolute;
     /* Canh giữa vào tâm của nửa bên phải màn hình */
-    left: 65%;
+    left: 70%;
     top: 50%;
     transform: translate(-50%, -50%);
     
