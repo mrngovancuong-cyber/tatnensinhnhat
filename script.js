@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function run() {
         try {
+            // ... (phần khởi tạo giữ nguyên, không thay đổi)
             startButton.disabled = true;
             loadingElement.innerText = "Đang tải mô hình AI...";
             const modelPromises = [
@@ -64,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
     run();
 
     // ==========================================================
-    // VÒNG LẶP GAME (SỬA LẠI LOGIC VẼ)
+    // VÒNG LẶP GAME (VIẾT LẠI HOÀN TOÀN LOGIC VẼ)
     // ==========================================================
     async function gameLoop() {
         if (video.paused || video.ended || !bodyPixModel) {
@@ -75,27 +76,21 @@ document.addEventListener('DOMContentLoaded', () => {
             canvasElement.height = video.videoHeight;
         }
         
+        // --- BƯỚC 1: NHẬN DIỆN MỌI THỨ ---
         const segmentation = await bodyPixModel.segmentPerson(video);
-        const mask = bodyPix.toMask(segmentation);
-
-        // --- BƯỚC 3.2 (ĐÃ SỬA): VẼ MỌI THỨ LÊN CANVAS CHÍNH ---
-        // Lớp 1: Vẽ nền ảo lên toàn bộ canvas
-        canvasCtx.drawImage(backgroundImage, 0, 0, canvasElement.width, canvasElement.height);
-
-        // Lớp 2: Vẽ "lỗ thủng" có hình người chơi lên nền
-        canvasCtx.save();
-        canvasCtx.globalCompositeOperation = 'destination-out';
-        canvasCtx.drawImage(mask, 0, 0, canvasElement.width, canvasElement.height);
-        
-        // Lớp 3: Vẽ hình ảnh video gốc vào đúng "lỗ thủng" đó
-        canvasCtx.globalCompositeOperation = 'destination-over';
-        canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
-        canvasCtx.restore();
-        
-        // --- CHẠY LOGIC GAME NHƯ CŨ ---
         const detectorOptions = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 });
         const detections = await faceapi.detectAllFaces(video, detectorOptions).withFaceLandmarks();
+
+        // --- BƯỚC 2: VẼ NỀN ---
+        canvasCtx.drawImage(backgroundImage, 0, 0, canvasElement.width, canvasElement.height);
         
+        // --- BƯỚC 3: VẼ NGƯỜI CHƠI LÊN TRÊN NỀN ---
+        // Tham số `false` nghĩa là không vẽ nền, chỉ vẽ người
+        // `1` là độ trong suốt (không mờ)
+        // `0` là độ làm mờ cạnh (không làm mờ)
+        bodyPix.drawMask(canvasElement, video, segmentation, 1, 0, false);
+        
+        // --- BƯỚC 4: CHẠY LOGIC & VẼ CÁC YẾU TỐ GAME LÊN TRÊN CÙNG ---
         if (gameActive) {
             if (detections && detections.length > 0) {
                 handleCollisions(detections[0].landmarks.positions[30]);
@@ -110,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(gameLoop);
     }
     
-    // (Các hàm còn lại giữ nguyên)
+    // (Các hàm còn lại không thay đổi)
     function drawFaceElements(box, mouthCenter) {
         const flippedX = canvasElement.width - box.x - box.width;
         const hatWidth = box.width * 1.5;
