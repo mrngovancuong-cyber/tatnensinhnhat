@@ -12,19 +12,27 @@ document.addEventListener('DOMContentLoaded', () => {
     const timerElement = document.getElementById("timer");
     const finalMessageElement = document.getElementById("final-message");
     const finalScoreElement = document.getElementById("final-score");
+    
+    // MỤC TIÊU 2.2: Lấy các thẻ audio
+    const bgMusic = document.getElementById("bg-music");
+    const cheerSound = document.getElementById("cheer-sound");
+    const splatSound = document.getElementById("splat-sound");
 
     // --- BIẾN TOÀN CỤC ---
     let gameActive = false;
     let score = 0;
-    let timeLeft = 60;
+    let timeLeft = 30; // MỤC TIÊU 2.1: Thay đổi luật chơi
     let gameInterval, candleInterval;
     let candles = [];
 
+    // Tải các hình ảnh
     const hatImage = new Image();
     const candleImages = [new Image(), new Image()];
+    const cakeWinImage = new Image();
+    const cakeLoseImage = new Image();
 
     // ==========================================================
-    // KHỞI TẠO CHÍNH (ĐÃ ĐƯỢC XÁC MINH)
+    // KHỞI TẠO CHÍNH
     // ==========================================================
     async function run() {
         try {
@@ -43,7 +51,10 @@ document.addEventListener('DOMContentLoaded', () => {
             await Promise.all([
                 createImagePromise(hatImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/birthdayhat.png'),
                 createImagePromise(candleImages[0], 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/candleb1.png'),
-                createImagePromise(candleImages[1], 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/candelb2.png')
+                createImagePromise(candleImages[1], 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/candelb2.png'),
+                // MỤC TIÊU 2.3: Tải ảnh bánh kem
+                createImagePromise(cakeWinImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/cnadleb3.png'),
+                createImagePromise(cakeLoseImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/cake.png'),
             ]);
 
             loadingElement.innerText = "Đang khởi động camera...";
@@ -54,6 +65,10 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingElement.classList.add("hidden");
             startButton.disabled = false;
             video.play();
+            
+            // MỤC TIÊU 2.1: Phát nhạc nền sau 2 giây
+            setTimeout(() => { bgMusic.play().catch(e => console.log("Không thể tự phát nhạc.")); }, 2000);
+            
             requestAnimationFrame(gameLoop);
         } catch (error) {
             console.error("Initialization Failed:", error);
@@ -63,12 +78,13 @@ document.addEventListener('DOMContentLoaded', () => {
     run();
 
     // ==========================================================
-    // VÒNG LẶP GAME
+    // VÒNG LẶP GAME VÀ CÁC HÀM KHÁC
     // ==========================================================
+    // (Phần này gần như giữ nguyên, chỉ có hàm endGame thay đổi)
+    
     async function gameLoop() {
         if (video.paused || video.ended) {
-            requestAnimationFrame(gameLoop);
-            return;
+            requestAnimationFrame(gameLoop); return;
         }
         if (canvasElement.width !== video.videoWidth) {
             canvasElement.width = video.videoWidth;
@@ -94,30 +110,20 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(gameLoop);
     }
     
-    // ==========================================================
-    // MỤC TIÊU 1.1: Lấy điểm giữa miệng
-    // ==========================================================
     function getMouthCenter(landmarks) {
-        const topLip = landmarks.positions[62]; // Điểm giữa môi trên
-        const bottomLip = landmarks.positions[66]; // Điểm giữa môi dưới
-        return {
-            x: (topLip.x + bottomLip.x) / 2,
-            y: (topLip.y + bottomLip.y) / 2
-        };
+        const topLip = landmarks.positions[62];
+        const bottomLip = landmarks.positions[66];
+        return { x: (topLip.x + bottomLip.x) / 2, y: (topLip.y + bottomLip.y) / 2 };
     }
 
-    // --- CÁC HÀM VẼ VÀ LOGIC ---
     function drawFaceElements(box, mouthCenter) {
         const flippedX = canvasElement.width - box.x - box.width;
-        // MỤC TIÊU 1.3: Bỏ khung xanh (đã xóa dòng vẽ)
-        
         const hatWidth = box.width * 1.5;
         const hatHeight = hatImage.height * (hatWidth / hatImage.width);
         const hatX = flippedX - (hatWidth - box.width) / 2;
         const hatY = box.y - hatHeight * 0.9;
         canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
 
-        // Chấm đỏ giờ sẽ ở giữa miệng
         const flippedMouthX = canvasElement.width - mouthCenter.x;
         canvasCtx.beginPath();
         canvasCtx.arc(flippedMouthX, mouthCenter.y, 5, 0, 2 * Math.PI);
@@ -140,33 +146,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    
-    // ==========================================================
-    // MỤC TIÊU 1.2: Tối ưu hóa việc sinh nến
-    // ==========================================================
     function spawnCandle() {
         if (candles.length > 2) { candles.shift(); }
         const size = 80;
-        let newCandle;
-        let isOverlapping;
-        let maxTries = 10; // Giới hạn số lần thử để tránh vòng lặp vô tận
-
+        let newCandle, isOverlapping;
+        let maxTries = 10;
         do {
             isOverlapping = false;
             const x = Math.random() * (canvasElement.width - size - 100) + 50;
             const y = Math.random() * (canvasElement.height - size - 100) + 50;
             newCandle = { x, y, width: size, height: size };
-
             for (const existingCandle of candles) {
-                const distance = Math.hypot(newCandle.x - existingCandle.x, newCandle.y - existingCandle.y);
-                if (distance < size * 1.5) { // Nếu khoảng cách quá gần, coi như trùng lặp
-                    isOverlapping = true;
-                    break;
+                if (Math.hypot(newCandle.x - existingCandle.x, newCandle.y - existingCandle.y) < size * 1.5) {
+                    isOverlapping = true; break;
                 }
             }
             maxTries--;
         } while (isOverlapping && maxTries > 0);
-        
         if (!isOverlapping) {
              const randomImage = candleImages[Math.floor(Math.random() * candleImages.length)];
              newCandle.image = randomImage;
@@ -174,9 +170,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- CÁC HÀM QUẢN LÝ GAME ---
     function startGame() {
-        score = 0; timeLeft = 60; candles = [];
+        score = 0; timeLeft = 30; candles = []; // Cập nhật thời gian
         scoreElement.innerText = score; timerElement.innerText = timeLeft;
         gameActive = true;
         
@@ -192,17 +187,64 @@ document.addEventListener('DOMContentLoaded', () => {
         
         candleInterval = setInterval(() => {
             if (gameActive) spawnCandle();
-        }, 2500); // Thay đổi từ 2000ms
+        }, 2500);
     }
 
-    function endGame() {
+    // ==========================================================
+    // MỤC TIÊU 2.3: Xây dựng kịch bản kết thúc game mới
+    // ==========================================================
+    async function endGame() {
         gameActive = false;
         clearInterval(gameInterval);
         clearInterval(candleInterval);
         finalScoreElement.innerText = score;
         finalMessageElement.classList.remove('hidden');
         startButton.style.display = 'block';
-        candles = [];
+        candles = []; // Xóa hết nến
+
+        // Chờ 1 chút để màn hình cuối hiện ra
+        await new Promise(r => setTimeout(r, 100));
+
+        // Lấy lại vị trí khuôn mặt lần cuối
+        const detectorOptions = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 });
+        const detections = await faceapi.detectAllFaces(video, detectorOptions).withFaceLandmarks();
+
+        if (detections && detections.length > 0) {
+            const face = detections[0];
+            const box = face.detection.box;
+
+            // --- Hiệu ứng 1: Bánh thắng & Vỗ tay ---
+            cheerSound.play();
+            const cakeWinWidth = box.width * 2;
+            const cakeWinHeight = cakeWinImage.height * (cakeWinWidth / cakeWinImage.width);
+            const flippedX = canvasElement.width - box.x - box.width;
+            const cakeWinX = flippedX + (box.width / 2) - (cakeWinWidth / 2);
+            const cakeWinY = box.y + box.height; // Vị trí trước ngực
+            canvasCtx.drawImage(cakeWinImage, cakeWinX, cakeWinY, cakeWinWidth, cakeWinHeight);
+            
+            setTimeout(() => {
+                // --- Hiệu ứng 2: Bánh thua & Âm thanh ụp ---
+                splatSound.play();
+                const cakeLoseWidth = box.width * 1.2;
+                const cakeLoseHeight = cakeLoseImage.height * (cakeLoseWidth / cakeLoseImage.width);
+                const cakeLoseX = flippedX + (box.width / 2) - (cakeLoseWidth / 2); // Giữa mặt
+                const cakeLoseY = box.y + (box.height / 2) - (cakeLoseHeight / 2);
+                
+                canvasCtx.globalAlpha = 0.7; // Độ trong suốt
+                canvasCtx.drawImage(cakeLoseImage, cakeLoseX, cakeLoseY, cakeLoseWidth, cakeLoseHeight);
+                canvasCtx.globalAlpha = 1.0; // Reset độ trong suốt
+                
+                // Xóa bánh thua sau 3 giây
+                setTimeout(() => {
+                    // Cần vẽ lại 1 lần nữa để xóa bánh, vì vòng lặp game đã dừng
+                    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+                    if (detections && detections.length > 0) {
+                         drawFaceElements(box, face.landmarks.positions[30]);
+                    }
+                }, 3000);
+
+            }, 3000);
+        }
     }
     startButton.addEventListener("click", startGame);
 });
