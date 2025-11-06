@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+    // --- DOM ELEMENTS & GLOBAL VARIABLES ---
     const video = document.getElementById("webcam");
     const canvasElement = document.getElementById("output_canvas");
     const canvasCtx = canvasElement.getContext("2d");
@@ -10,24 +11,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const timerElement = document.getElementById("timer");
     const finalWishContainer = document.getElementById("final-wish-container");
     const finalWishScore = document.querySelector("#wish-line-2 strong");
+    const gameContainer = document.querySelector('.game-container');
     const bgMusic = document.getElementById("bg-music");
     const cheerSound = document.getElementById("cheer-sound");
     const splatSound = document.getElementById("splat-sound");
     const introModal = document.getElementById("intro-modal");
     const readyButton = document.getElementById("readyButton");
+    
+    let gameActive = false; let score = 0; let timeLeft = 35;
+    let gameInterval, candleInterval;
+    let confettiInterval = null;
+    let candles = [];
+    
+    let endGameScene = {
+        active: false,
+        showWinCake: false,
+        showLoseCake: false,
+        faceData: null
+    };
 
-    let gameActive = false; let score = 0; let timeLeft = 60;
-    let gameInterval, candleInterval; let candles = [];
-    let endGameScene = { active: false, showWinCake: false, showLoseCake: false, faceData: null };
-    const hatImage = new Image(); const candleImages = [new Image(), new Image()];
-    const cakeWinImage = new Image(); const cakeLoseImage = new Image();
+    const hatImage = new Image();
+    const candleImages = [new Image(), new Image()];
+    const cakeWinImage = new Image();
+    const cakeLoseImage = new Image();
 
     // ==========================================================
-    // SỬA LỖI LOGIC: HÀM RUN SẼ CHỈ ĐƯỢC GỌI SAU KHI NHẤN "SẴN SÀNG"
+    // KHỞI TẠO CHÍNH
     // ==========================================================
     async function run() {
         try {
-            // Ẩn nút bắt đầu và hiển thị loading
             startButton.style.display = 'none';
             loadingElement.classList.remove('hidden');
 
@@ -55,12 +67,11 @@ document.addEventListener('DOMContentLoaded', () => {
             video.srcObject = stream;
             await new Promise(resolve => { video.onloadedmetadata = resolve; });
             
-            // MỌI THỨ ĐÃ SẴN SÀNG!
             loadingElement.classList.add("hidden");
             startButton.disabled = false;
-            startButton.style.display = 'block'; // Hiển thị lại nút Bắt Đầu
+            startButton.style.display = 'block';
             video.play();
-            setTimeout(() => { bgMusic.play().catch(e => {}); }, 1000); // Phát nhạc sớm hơn
+            setTimeout(() => { bgMusic.play().catch(e => {}); }, 1000);
             requestAnimationFrame(gameLoop);
         } catch (error) {
             console.error("Initialization Failed:", error);
@@ -68,14 +79,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Gắn sự kiện cho nút "Sẵn sàng"
     readyButton.addEventListener('click', () => {
         introModal.classList.add('hidden');
-        run(); // CHỈ CHẠY HÀM RUN SAU KHI CLICK
+        run();
     });
 
     // ==========================================================
-    // VÒNG LẶP GAME (SỬA LẠI THỨ TỰ VẼ)
+    // VÒNG LẶP GAME
     // ==========================================================
     async function gameLoop() {
         if (video.paused || video.ended) { requestAnimationFrame(gameLoop); return; }
@@ -88,53 +98,37 @@ document.addEventListener('DOMContentLoaded', () => {
         
         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
         
-        // Luôn vẽ khuôn mặt và nón trước
         if (detections && detections.length > 0) {
             const face = detections[0];
-            endGameScene.faceData = face; // Lưu dữ liệu để dùng sau
+            endGameScene.faceData = face;
             const mouthCenter = getMouthCenter(face.landmarks);
-            drawFaceElements(face.detection.box, mouthCenter);
-        }
-
-        // Logic game chỉ chạy khi đang active
-        if (gameActive) {
-            if (detections && detections.length > 0) {
-                const mouthCenter = getMouthCenter(detections[0].landmarks);
+            drawFaceElements(face.detection.box); // Bỏ mouthCenter vì không vẽ chấm đỏ
+            if (gameActive) {
                 handleCollisions(mouthCenter);
             }
-            // --- SỬA LỖI: Vẽ nến Ở ĐÂY để chúng hiện trên cùng ---
-            drawCandles(); 
         }
-
-        // Vẽ kịch bản cuối game nếu đang hoạt động
+        if (gameActive) {
+            drawCandles();
+        }
         if (endGameScene.active) {
             drawEndGameScene();
         }
-        
         requestAnimationFrame(gameLoop);
     }
     
-    // ==========================================================
-    // SỬA LẠI LOGIC ĐIỀU KHIỂN BẰNG MIỆNG
-    // ==========================================================
     function getMouthCenter(landmarks) {
         const topLip = landmarks.positions[62];
         const bottomLip = landmarks.positions[66];
         return { x: (topLip.x + bottomLip.x) / 2, y: (topLip.y + bottomLip.y) / 2 };
     }
     
-    function drawFaceElements(box, mouthCenter) {
+    function drawFaceElements(box) {
         const flippedX = canvasElement.width - box.x - box.width;
-        const hatWidth = box.width * 1.5; const hatHeight = hatImage.height * (hatWidth / hatImage.width);
-        const hatX = flippedX - (hatWidth - box.width) / 2; const hatY = box.y - hatHeight * 0.9;
+        const hatWidth = box.width * 1.5;
+        const hatHeight = hatImage.height * (hatWidth / hatImage.width);
+        const hatX = flippedX - (hatWidth - box.width) / 2;
+        const hatY = box.y - hatHeight * 0.9;
         canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
-        
-        // Chấm đỏ giờ sẽ ở giữa miệng
-        // const flippedMouthX = canvasElement.width - mouthCenter.x;
-        // canvasCtx.beginPath();
-        // canvasCtx.arc(flippedMouthX, mouthCenter.y, 5, 0, 2 * Math.PI);
-        // canvasCtx.fillStyle = 'red';
-        // canvasCtx.fill();
     }
     
     function drawCandles() { candles.forEach(c => canvasCtx.drawImage(c.image, c.x, c.y, c.width, c.height)); }
@@ -144,7 +138,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const flippedMouthX = canvasElement.width - mouthCenter.x;
             if (flippedMouthX > candle.x && flippedMouthX < candle.x + candle.width &&
                 mouthCenter.y > candle.y && mouthCenter.y < candle.y + candle.height) {
-                candles.splice(index, 1); score++; scoreElement.innerText = score;
+                candles.splice(index, 1);
+                score++;
+                scoreElement.innerText = score;
             }
         });
     }
@@ -153,7 +149,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!endGameScene.faceData) return;
         const box = endGameScene.faceData.detection.box;
         const flippedX = canvasElement.width - box.x - box.width;
-
         if (endGameScene.showWinCake) {
             const cakeWinWidth = box.width * 2;
             const cakeWinHeight = cakeWinImage.height * (cakeWinWidth / cakeWinImage.width);
@@ -173,90 +168,94 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function spawnCandle() {
-        if (candles.length > 2) { candles.shift(); }
-        const size = 80; let newCandle, isOverlapping; let maxTries = 10;
+        if (candles.length >= 3) return;
+        const size = 80;
+        let newCandleData, isOverlapping;
+        let maxTries = 10;
         do {
             isOverlapping = false;
             const x = Math.random() * (canvasElement.width - size - 100) + 50;
             const y = Math.random() * (canvasElement.height - size - 100) + 50;
-            newCandle = { x, y, width: size, height: size };
-            for (const c of candles) { if (Math.hypot(newCandle.x - c.x, newCandle.y - c.y) < size * 1.5) { isOverlapping = true; break; } }
+            newCandleData = { x, y, width: size, height: size };
+            for (const c of candles) {
+                if (Math.hypot(newCandleData.x - c.x, newCandleData.y - c.y) < size * 1.5) {
+                    isOverlapping = true; break;
+                }
+            }
             maxTries--;
         } while (isOverlapping && maxTries > 0);
         if (!isOverlapping) {
-             newCandle.image = candleImages[Math.floor(Math.random() * candleImages.length)];
-             candles.push(newCandle);
+            const candleId = Date.now();
+            const randomImage = candleImages[Math.floor(Math.random() * candleImages.length)];
+            newCandleData.image = randomImage;
+            newCandleData.id = candleId;
+            candles.push(newCandleData);
+            setTimeout(() => {
+                const index = candles.findIndex(c => c.id === candleId);
+                if (index !== -1) { candles.splice(index, 1); }
+            }, 3000);
         }
     }
     
-    function startGame() {
-        score = 0; timeLeft = 35; candles = [];
-        endGameScene.active = false;
-        scoreElement.innerText = score; timerElement.innerText = timeLeft;
-        gameActive = true;
-        
-        startButton.style.display = 'none';
-        finalWishContainer.classList.add('hidden');
-        gameInfoElement.style.display = 'flex';
-        
-        gameInterval = setInterval(() => {
-            timeLeft--;
-            timerElement.innerText = timeLeft;
-            if (timeLeft <= 0) endGame();
-        }, 1000);
-        
-        candleInterval = setInterval(() => { if (gameActive) spawnCandle(); }, 2500);
-    }
+// ==========================================================
+// THAY THẾ HÀM CŨ BẰNG HÀM MỚI NÀY
+// ==========================================================
+function startGame() {
+    score = 0; timeLeft = 35; candles = [];
+    endGameScene.active = false;
+    if (confettiInterval) clearInterval(confettiInterval);
 
-    function endGame() {
-        gameActive = false;
-        clearInterval(gameInterval); clearInterval(candleInterval);
-        candles = [];
-        finalWishScore.innerText = score;
-        finalWishContainer.classList.remove('hidden');
-        gameInfoElement.style.display = 'none';
-        startButton.style.display = 'none';
+    // Chuyển về bố cục 1 cột (trạng thái chơi game)
+    gameContainer.classList.remove('end-state');
+    finalWishContainer.classList.add('hidden');
 
-        endGameScene.active = true;
-        cheerSound.play();
-        endGameScene.showWinCake = true;
-        // ==========================================================
-        // KÍCH HOẠT PHÁO HOA LIÊN TỤC
-        // ==========================================================
-        confettiInterval = setInterval(() => {
-            // Bắn từ góc dưới bên trái
-            confetti({
-                particleCount: 50,
-                angle: 60,
-                spread: 55,
-                origin: { x: 0, y: 1 }
-            });
-            // Bắn từ góc dưới bên phải
-            confetti({
-                particleCount: 50,
-                angle: 120,
-                spread: 55,
-                origin: { x: 1, y: 1 }
-            });
-        }, 400); // Cứ 400ms bắn một lần
-	// ==========================================================
-        // SỬA LẠI THỜI GIAN HIỂN THỊ BÁNH KEM
-        // ==========================================================
+    scoreElement.innerText = score; timerElement.innerText = timeLeft;
+    gameActive = true;
+    startButton.style.display = 'none';
+    gameInfoElement.style.display = 'flex';
+    gameInterval = setInterval(() => {
+        timeLeft--;
+        timerElement.innerText = timeLeft;
+        if (timeLeft <= 0) endGame();
+    }, 1000);
+    candleInterval = setInterval(() => { if (gameActive) spawnCandle(); }, 2500);
+}
+
+// ==========================================================
+// THAY THẾ HÀM CŨ BẰNG HÀM MỚI NÀY
+// ==========================================================
+async function endGame() {
+    gameActive = false;
+    clearInterval(gameInterval); clearInterval(candleInterval);
+    candles = [];
+    finalWishScore.innerText = score;
+    
+    // Chuyển sang bố cục 2 cột (trạng thái kết thúc)
+    gameContainer.classList.add('end-state');
+    finalWishContainer.classList.remove('hidden');
+    
+    gameInfoElement.style.display = 'none';
+    startButton.style.display = 'none';
+
+    // Kịch bản bánh kem & pháo hoa
+    endGameScene.active = true;
+    cheerSound.play();
+    endGameScene.showWinCake = true;
+    confettiInterval = setInterval(() => {
+        confetti({ particleCount: 50, angle: 60, spread: 55, origin: { x: 0, y: 1 } });
+        confetti({ particleCount: 50, angle: 120, spread: 55, origin: { x: 1, y: 1 } });
+    }, 400);
+    
+    setTimeout(() => {
+        endGameScene.showWinCake = false;
+        splatSound.play();
+        endGameScene.showLoseCake = true;
         setTimeout(() => {
-            endGameScene.showWinCake = false;
-            splatSound.play();
-            endGameScene.showLoseCake = true;
-            
-            setTimeout(() => {
-                endGameScene.showLoseCake = false;
-                endGameScene.active = false;
-            }, 5000); // Bánh thua tồn tại 5 giây
-        }, 8000); // Bánh thắng tồn tại 8 giây
-    }
-
-	
-
-       
+            endGameScene.showLoseCake = false;
+            endGameScene.active = false;
+        }, 5000);
+    }, 8000);
+}
     
     startButton.addEventListener("click", startGame);
 });
