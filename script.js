@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
             canvasCtx.drawImage(cakeWinImage, cakeWinX, cakeWinY, cakeWinWidth, cakeWinHeight);
         }
         if (endGameScene.showLoseCake) {
-            const cakeLoseWidth = box.width * 1.5;
+            const cakeLoseWidth = box.width * 1.7;
             const cakeLoseHeight = cakeLoseImage.height * (cakeLoseWidth / cakeLoseImage.width);
             const cakeLoseX = flippedX + (box.width / 2) - (cakeLoseWidth / 2);
             const cakeLoseY = box.y + (box.height / 2) - (cakeLoseHeight / 2);
@@ -238,8 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 endGameScene.showLoseCake = false;
                 endGameScene.active = false;
-            }, 6000); // Bánh thua tồn tại 6 giây
-        }, 6000); // Bánh thắng tồn tại 6 giây
+            }, 5000); // Bánh thua tồn tại 5 giây
+        }, 8000); // Bánh thắng tồn tại 8 giây
     }
     
     startButton.addEventListener("click", startGame);
