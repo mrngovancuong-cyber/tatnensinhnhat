@@ -12,6 +12,19 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- ========================================================== -->
+    <!-- MÀN HÌNH HƯỚNG DẪN MỚI                                   -->
+    <!-- ========================================================== -->
+    <div id="intro-modal">
+        <div class="modal-content">
+            <p>Một trò chơi nhỏ được tạo ra chỉ dành riêng cho bạn!</p>
+            <p>Hãy thổi tắt thật nhiều cây nến để ghi điểm cho mình trước khi chúng biến mất.</p>
+            <p>Nhớ ngồi ở nơi có đủ sáng để camera nhận diện bạn tốt nhất nhé!</p>
+            <p class="wish">Chúc bạn thật nhiều niềm vui!</p>
+            <button id="readyButton">Sẵn sàng</button>
+        </div>
+    </div>
+
     <div class="main-container">
         <div class="game-container">
             <div id="game-wrapper">
@@ -30,19 +43,14 @@
 
         <div id="final-wish-container" class="hidden">
             <p id="wish-line-1">Sinh nhật tuổi 35</p>
-            <p id="wish-line-2">Chúc cô Nga niềm vui nhân <strong>X</strong> lần</p>
+            <p id="wish-line-2">Chúc cô Nga hạnh phúc và thành công gấp <strong> X </strong> lần</p>
         </div>
     </div>
     
-    <audio id="bg-music" src="https://github.com/mrngovancuong-cyber/image-data/raw/refs/heads/main/Songbirthday.mp3"></audio>
+    <audio id="bg-music" loop src="https://github.com/mrngovancuong-cyber/image-data/raw/refs/heads/main/Songbirthday.mp3"></audio>
     <audio id="cheer-sound" src="https://github.com/mrngovancuong-cyber/image-data/raw/main/cheering.mp3"></audio>
     <audio id="splat-sound" src="https://github.com/mrngovancuong-cyber/image-data/raw/main/snowballthrow.mp3"></audio>
     
-    <!-- ========================================================== -->
-    <!-- THÊM THƯ VIỆN PHÁO HOA                                     -->
-    <!-- ========================================================== -->
-    <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
-
     <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <script defer src="script.js"></script>
 </body>

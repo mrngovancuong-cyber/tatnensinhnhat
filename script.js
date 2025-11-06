@@ -116,11 +116,11 @@ document.addEventListener('DOMContentLoaded', () => {
         canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
         
         // Chấm đỏ giờ sẽ ở giữa miệng
-        const flippedMouthX = canvasElement.width - mouthCenter.x;
-        canvasCtx.beginPath();
-        canvasCtx.arc(flippedMouthX, mouthCenter.y, 5, 0, 2 * Math.PI);
-        canvasCtx.fillStyle = 'red';
-        canvasCtx.fill();
+        // const flippedMouthX = canvasElement.width - mouthCenter.x;
+        // canvasCtx.beginPath();
+        // canvasCtx.arc(flippedMouthX, mouthCenter.y, 5, 0, 2 * Math.PI);
+        // canvasCtx.fillStyle = 'red';
+        // canvasCtx.fill();
     }
     
     function drawCandles() { candles.forEach(c => canvasCtx.drawImage(c.image, c.x, c.y, c.width, c.height)); }
