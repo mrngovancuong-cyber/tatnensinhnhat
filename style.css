@@ -2,24 +2,26 @@
 body {
     margin: 0;
     overflow: hidden;
-    background-color: #000; /* Màu nền dự phòng */
+    background-color: #000; /* Màu cho các dải đen */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
     font-family: 'Story Script', cursive;
 }
 
-.hidden { display: none !important; }
-
-/* --- Container chính, luôn giữ tỉ lệ 16:9 --- */
+/* ========================================================== */
+/* CONTAINER CHÍNH - LUÔN GIỮ TỈ LỆ 16:9                     */
+/* ========================================================== */
 .main-container {
     position: relative;
-    width: 100vw;
-    height: 56.25vw; /* 9 / 16 * 100 */
+    width: 100vw; 
+    height: 56.25vw; /* 9 / 16 * 100vw */
     max-height: 100vh;
-    max-width: 177.78vh; /* 16 / 9 * 100 */
-    margin: auto;
-    top: 50%;
-    transform: translateY(-50%);
-    background-image: url('https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/1.png'); /* <<=== THAY LINK HÌNH NỀN MỚI VÀO ĐÂY */
-    background-size: contain;
+    max-width: 177.78vh; /* 16 / 9 * 100vh */
+    
+    background-image: url('https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/1.png');
+    background-size: contain; /* Luôn hiển thị toàn bộ ảnh */
     background-repeat: no-repeat;
     background-position: center;
 }
@@ -27,29 +29,24 @@ body {
 /* --- Khối Game (Bao gồm cả khung viền) --- */
 .game-container {
     position: absolute;
-    /* Tính toán vị trí dựa trên tỉ lệ màn hình 1920x1080 */
-    /* Chiều rộng khối game-container: 800 + padding(20*2) = 840px */
-    width: 43.75%; /* (840 / 1920) * 100 */
-    
-    /* Canh giữa theo chiều ngang */
+    /* Kích thước và vị trí theo % của container chính (1920x1080) */
+    width: 43.75%; /* 840px / 1920px */
+    bottom: 6.48%; /* 70px / 1080px */
     left: 50%;
     transform: translateX(-50%);
     
-    /* Canh dưới */
-    bottom: 6.48%; /* (70 / 1080) * 100 */
-    
-    /* Các thuộc tính khác */
-    background-color: #213547; /* Màu xanh đậm bạn đã dùng */
-    padding: 1.04%; /* (20 / 1920) * 100 */
-    border-radius: 0.78vw; /* ~15px */
+    background-color: #213547;
+    padding: 1.04%; /* 20px / 1920px */
+    border-radius: 0.78vw;
     display: flex;
     flex-direction: column;
     align-items: center;
+    transition: all 0.5s ease-in-out;
 }
 
 /* Khi game kết thúc, khối này sẽ di chuyển */
 .game-container.end-state {
-    left: 4.6875%; /* (90 / 1920) * 100 */
+    left: 25.5%; /* Tọa độ x trung tâm của khối: (90 + 840/2) / 1920 */
     bottom: 50%;
     transform: translateY(50%);
 }
@@ -59,85 +56,43 @@ body {
     width: 95.23%; /* 800 / 840 */
     padding-bottom: 71.42%; /* 600 / 840 */
     height: 0;
-    border: 0.26vw solid #f1c40f; /* ~5px */
-    border-radius: 0.52vw; /* ~10px */
+    border: 0.26vw solid #f1c40f;
+    border-radius: 0.52vw;
     background: #000;
 }
 
 #webcam, #output_canvas, #loading {
-    position: absolute; top: 0; left: 0;
-    width: 100%; height: 100%;
-    border-radius: 0.26vw;
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 0.26vw;
 }
-#webcam { transform: scaleX(-1); }
+#webcam { transform: scaleX(-1); } 
 #output_canvas { z-index: 10; }
 #loading { z-index: 20; display: flex; align-items: center; justify-content: center; font-size: 2vw; color: #fff; }
 
-#ui-container {
-    margin-top: 1.04%; /* 20px / 1920 */
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-#game-info {
-    display: flex; justify-content: space-around;
-    width: 100%;
-    font-size: 2.2vw;
-    margin-bottom: 0.78%; /* 15px / 1920 */
-    color: white;
-    text-shadow: 0.1vw 0.1vw 0.2vw rgba(0, 0, 0, 0.5);
-}
-
-#startButton {
-    font-family: 'Story Script', cursive; padding: 0.78vw 2.08vw; /* 15px 40px */
-    font-size: 1.8vw; cursor: pointer;
-    background-color: #e67e22; color: white; border: none;
-    border-radius: 0.26vw; transition: background-color 0.3s;
-    text-shadow: 0.05vw 0.05vw 0.1vw rgba(0, 0, 0, 0.5);
-}
+#ui-container { margin-top: 1.04%; width: 100%; display: flex; flex-direction: column; align-items: center; }
+#game-info { display: flex; justify-content: space-around; width: 100%; font-size: 2.2vw; margin-bottom: 0.78%; color: white; text-shadow: 0.1vw 0.1vw 0.2vw rgba(0, 0, 0, 0.5); }
+#startButton { font-family: 'Story Script', cursive; padding: 0.78vw 2.08vw; font-size: 1.8vw; cursor: pointer; background-color: #e67e22; color: white; border: none; border-radius: 0.26vw; transition: background-color 0.3s; text-shadow: 0.05vw 0.05vw 0.1vw rgba(0, 0, 0, 0.5); }
 #startButton:disabled { background-color: #7f8c8d; cursor: not-allowed; }
 
 /* --- Khối Lời chúc --- */
 #final-wish-container {
     position: absolute;
-    /* Vị trí cột phải */
-    left: 51.56%; /* ((1920/2) + 30) / 1920 */
+    left: 65.8%; /* Tọa độ x trung tâm khối: ((1920/2)+30 + 570/2) / 1920 */
     top: 50%;
-    transform: translateY(-50%);
-    
-    /* Kích thước */
+    transform: translate(-50%, -50%);
     width: 29.6875%; /* 570 / 1920 */
     
-    display: flex; flex-direction: column;
-    justify-content: center; align-items: center;
-    color: #E91E63;
-    text-shadow: 0.15vw 0.15vw 0.26vw rgba(0, 0, 0, 0.7);
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    color: #E91E63; text-shadow: 0.15vw 0.15vw 0.26vw rgba(0, 0, 0, 0.7);
 }
+#wish-line-1 { font-family: 'Fleur De Leah', cursive; font-size: 4.16vw; margin: 0; }
+#wish-line-2 { font-family: 'Story Script', cursive; font-size: 2.6vw; margin-top: 1.04%; line-height: 1.4; }
 
-#wish-line-1 {
-    width: 100%;
-    height: 23.14%; /* 250 / 1080 */
-    font-family: 'Fleur De Leah', cursive;
-    font-size: 4.16vw; /* ~80px */
-    margin: 0;
-    display: flex; align-items: center; justify-content: center;
-}
-#wish-line-2 {
-    width: 100%;
-    height: 27.77%; /* 300 / 1080 */
-    font-family: 'Story Script', cursive;
-    font-size: 2.6vw; /* ~50px */
-    margin-top: 1.04%; /* 20px / 1920 */
-    display: flex; align-items: center; justify-content: center;
-    line-height: 1.4;
-}
+.hidden { display: none !important; }
 
-/* --- Modal Hướng dẫn --- */
+/* --- Modal Hướng dẫn (Giữ nguyên) --- */
 #intro-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.85); display: flex; justify-content: center; align-items: center; z-index: 100; }
 .modal-content { background-color: #2c3e50; padding: 40px; border-radius: 20px; border: 3px solid #f1c40f; max-width: 600px; box-shadow: 0 0 30px rgba(241, 196, 15, 0.5); }
 .modal-content p { font-size: 1.8em; line-height: 1.6; margin: 15px 0; }
 .modal-content .wish { color: #f1c40f; font-size: 2em; font-weight: bold; }
-#readyButton { font-family: 'Story Script', cursive; padding: 15px 40px; font-size: 1.8em; cursor: pointer; background-color: #27ae60; color: white; border: none; border-radius: 5px; margin-top: 20px; transition: background-color 0.3s; }
+#readyButton { font-family: 'Story Script', cursive; padding: 15px 40px; font-size: 1.8em; cursor: pointer; background-color: #27ae60; color: white; border: none; border-radius: 5px; margin-top: 20px; transition: background-color: 0.3s; }
 #readyButton:hover { background-color: #2ecc71; }
