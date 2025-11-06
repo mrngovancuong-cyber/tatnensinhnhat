@@ -3,30 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thử Thách Dập Nến Sinh Nhật!</title>
+    <title>Chúc Mừng Sinh Nhật!</title>
+
+    <!-- ========================================================== -->
+    <!-- CHỈ NẠP 2 FONT CẦN THIẾT                             -->
+    <!-- ========================================================== -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fleur+De+Leah&family=Story+Script&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>THỬ THÁCH DẬP NẾN SINH NHẬT!</h1>
-        <div id="game-wrapper">
-            <video id="webcam" autoplay playsinline></video>
-            <canvas id="output_canvas"></canvas>
-            <div id="loading">Đang tải mô hình AI... Vui lòng đợi!</div>
+    <div class="main-container">
+        <div class="game-container">
+            <div id="game-wrapper">
+                <video id="webcam" autoplay playsinline></video>
+                <canvas id="output_canvas"></canvas>
+                <div id="loading">Đang tải tài nguyên...</div>
+            </div>
+            <div id="ui-container">
+                <div id="game-info">
+                    <span>Điểm: <strong id="score">0</strong></span>
+                    <span>Thời gian: <strong id="timer">30</strong></span>
+                </div>
+                <button id="startButton" disabled>BẮT ĐẦU</button>
+            </div>
         </div>
-        <div id="ui-container">
-            <div id="game-info">
-                <span>Điểm: <strong id="score">0</strong></span>
-                <span>Thời gian: <strong id="timer">60</strong></span>
-            </div>
-            <button id="startButton" disabled>BẮT ĐẦU</button>
-            <div id="final-message" class="hidden">
-                <h2>HẾT GIỜ!</h2>
-                <p>Chúc mừng bạn đã dập tắt được <strong id="final-score">0</strong> cây nến!</p>
-                <p class="birthday-wish">CHÚC MỪNG SINH NHẬT NHÉ!</p>
-            </div>
+
+        <div id="final-wish-container" class="hidden">
+            <p id="wish-line-1">Sinh nhật tuổi 35</p>
+            <p id="wish-line-2">Chúc cô Nga niềm vui nhân <strong>X</strong> lần</p>
         </div>
     </div>
+    
+    <audio id="bg-music" loop src="https://github.com/mrngovancuong-cyber/image-data/raw/main/birthdaysong.mp3"></audio>
+    <audio id="cheer-sound" src="https://github.com/mrngovancuong-cyber/image-data/raw/main/cheering.mp3"></audio>
+    <audio id="splat-sound" src="https://github.com/mrngovancuong-cyber/image-data/raw/main/snowballthrow.mp3"></audio>
+    
     <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <script defer src="script.js"></script>
 </body>
