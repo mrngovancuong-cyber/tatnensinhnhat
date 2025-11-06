@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- BIẾN TOÀN CỤC ---
     let userName = "bạn";
-    let userAge = "Y";
+    let userAge = "25";
 
     let gameActive = false; let score = 0; let timeLeft = 35;
     let gameInterval, candleInterval;
