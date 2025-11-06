@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
             canvasCtx.drawImage(cakeWinImage, cakeWinX, cakeWinY, cakeWinWidth, cakeWinHeight);
         }
         if (endGameScene.showLoseCake) {
-            const cakeLoseWidth = box.width * 1.2;
+            const cakeLoseWidth = box.width * 1.5;
             const cakeLoseHeight = cakeLoseImage.height * (cakeLoseWidth / cakeLoseImage.width);
             const cakeLoseX = flippedX + (box.width / 2) - (cakeLoseWidth / 2);
             const cakeLoseY = box.y + (box.height / 2) - (cakeLoseHeight / 2);
@@ -207,6 +207,26 @@ document.addEventListener('DOMContentLoaded', () => {
         cheerSound.play();
         endGameScene.showWinCake = true;
         
+	// ==========================================================
+        // KÍCH HOẠT PHÁO HOA LIÊN TỤC
+        // ==========================================================
+        confettiInterval = setInterval(() => {
+            // Bắn từ góc dưới bên trái
+            confetti({
+                particleCount: 50,
+                angle: 60,
+                spread: 55,
+                origin: { x: 0, y: 1 }
+            });
+            // Bắn từ góc dưới bên phải
+            confetti({
+                particleCount: 50,
+                angle: 120,
+                spread: 55,
+                origin: { x: 1, y: 1 }
+            });
+        }, 400); // Cứ 400ms bắn một lần
+
         // ==========================================================
         // SỬA LẠI THỜI GIAN HIỂN THỊ BÁNH KEM
         // ==========================================================
