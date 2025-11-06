@@ -23,6 +23,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const ageInput = document.getElementById("ageInput");
     const ageText = document.getElementById("age-text");
     const nameText = document.getElementById("name-text");
+
+    const isMobile = () => {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    }
     
     // --- BIẾN TOÀN CỤC ---
     let userName = "bạn";
@@ -115,7 +119,12 @@ document.addEventListener('DOMContentLoaded', () => {
             canvasElement.width = video.videoWidth; canvasElement.height = video.videoHeight;
         }
         
-        const detectorOptions = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 });
+        // ==========================================================
+        // TỐI ƯU HÓA HIỆU SUẤT CHO DI ĐỘNG
+        // ==========================================================
+        const inputSize = isMobile() ? 224 : 512; // Dùng ảnh nhỏ hơn trên di động
+        const detectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize, scoreThreshold: 0.4 });
+        
         const detections = await faceapi.detectAllFaces(video, detectorOptions).withFaceLandmarks();
         
         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
@@ -124,7 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const face = detections[0];
             endGameScene.faceData = face;
             const mouthCenter = getMouthCenter(face.landmarks);
-            drawFaceElements(face.detection.box); // Bỏ mouthCenter vì không vẽ chấm đỏ
+            drawFaceElements(face.detection.box);
             if (gameActive) {
                 handleCollisions(mouthCenter);
             }
