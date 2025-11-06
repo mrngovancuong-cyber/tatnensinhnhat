@@ -13,25 +13,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const bgMusic = document.getElementById("bg-music");
     const cheerSound = document.getElementById("cheer-sound");
     const splatSound = document.getElementById("splat-sound");
+    const introModal = document.getElementById("intro-modal");
+    const readyButton = document.getElementById("readyButton");
 
-    let gameActive = false; let score = 0; let timeLeft = 30;
+    let gameActive = false; let score = 0; let timeLeft = 60;
     let gameInterval, candleInterval; let candles = [];
-    
-    let endGameScene = {
-        active: false, showWinCake: false, showLoseCake: false, faceData: null
-    };
-
+    let endGameScene = { active: false, showWinCake: false, showLoseCake: false, faceData: null };
     const hatImage = new Image(); const candleImages = [new Image(), new Image()];
     const cakeWinImage = new Image(); const cakeLoseImage = new Image();
 
+    // ==========================================================
+    // SỬA LỖI LOGIC: HÀM RUN SẼ CHỈ ĐƯỢC GỌI SAU KHI NHẤN "SẴN SÀNG"
+    // ==========================================================
     async function run() {
         try {
-            startButton.disabled = true;
+            // Ẩn nút bắt đầu và hiển thị loading
+            startButton.style.display = 'none';
+            loadingElement.classList.remove('hidden');
+
             loadingElement.innerText = "Đang tải mô hình AI...";
             await Promise.all([
                 faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
                 faceapi.nets.faceLandmark68Net.loadFromUri('/models')
             ]);
+            
             loadingElement.innerText = "Đang tải hình ảnh...";
             const createImagePromise = (img, src) => new Promise((res, rej) => {
                 img.src = src; img.crossOrigin = "Anonymous";
@@ -44,21 +49,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 createImagePromise(cakeWinImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/cnadleb3.png'),
                 createImagePromise(cakeLoseImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/cake.png'),
             ]);
+
             loadingElement.innerText = "Đang khởi động camera...";
             const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
             video.srcObject = stream;
             await new Promise(resolve => { video.onloadedmetadata = resolve; });
+            
+            // MỌI THỨ ĐÃ SẴN SÀNG!
             loadingElement.classList.add("hidden");
             startButton.disabled = false;
+            startButton.style.display = 'block'; // Hiển thị lại nút Bắt Đầu
             video.play();
-            setTimeout(() => { bgMusic.play().catch(e => {}); }, 2000);
+            setTimeout(() => { bgMusic.play().catch(e => {}); }, 1000); // Phát nhạc sớm hơn
             requestAnimationFrame(gameLoop);
         } catch (error) {
             console.error("Initialization Failed:", error);
             loadingElement.innerText = "Lỗi! Vui lòng tải lại trang.";
         }
     }
-    run();
+    
+    // Gắn sự kiện cho nút "Sẵn sàng"
+    readyButton.addEventListener('click', () => {
+        introModal.classList.add('hidden');
+        run(); // CHỈ CHẠY HÀM RUN SAU KHI CLICK
+    });
 
     // ==========================================================
     // VÒNG LẶP GAME (SỬA LẠI THỨ TỰ VẼ)
@@ -206,7 +220,21 @@ document.addEventListener('DOMContentLoaded', () => {
         endGameScene.active = true;
         cheerSound.play();
         endGameScene.showWinCake = true;
-        
+        // ==========================================================
+        // SỬA LẠI THỜI GIAN HIỂN THỊ BÁNH KEM
+        // ==========================================================
+        setTimeout(() => {
+            endGameScene.showWinCake = false;
+            splatSound.play();
+            endGameScene.showLoseCake = true;
+            
+            setTimeout(() => {
+                endGameScene.showLoseCake = false;
+                endGameScene.active = false;
+            }, 5000); // Bánh thua tồn tại 5 giây
+        }, 8000); // Bánh thắng tồn tại 8 giây
+    }
+
 	// ==========================================================
         // KÍCH HOẠT PHÁO HOA LIÊN TỤC
         // ==========================================================
@@ -227,20 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }, 400); // Cứ 400ms bắn một lần
 
-        // ==========================================================
-        // SỬA LẠI THỜI GIAN HIỂN THỊ BÁNH KEM
-        // ==========================================================
-        setTimeout(() => {
-            endGameScene.showWinCake = false;
-            splatSound.play();
-            endGameScene.showLoseCake = true;
-            
-            setTimeout(() => {
-                endGameScene.showLoseCake = false;
-                endGameScene.active = false;
-            }, 5000); // Bánh thua tồn tại 5 giây
-        }, 8000); // Bánh thắng tồn tại 8 giây
-    }
+       
     
     startButton.addEventListener("click", startGame);
 });
