@@ -16,18 +16,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let gameActive = false; let score = 0; let timeLeft = 30;
     let gameInterval, candleInterval; let candles = [];
-    let bodyPixModel = null; // Biến cho mô hình BodyPix
+    let bodyPixModel = null;
 
-    // Tải tất cả hình ảnh cần thiết
-    const hatImage = new Image();
-    const candleImages = [new Image(), new Image()];
-    const cakeWinImage = new Image();
-    const cakeLoseImage = new Image();
-    const backgroundImage = new Image(); // Ảnh nền video
+    const hatImage = new Image(); const candleImages = [new Image(), new Image()];
+    const cakeWinImage = new Image(); const cakeLoseImage = new Image();
+    const backgroundImage = new Image();
 
-    // ==========================================================
-    // KHỞI TẠO CHÍNH (THÊM BODYPIX)
-    // ==========================================================
     async function run() {
         try {
             startButton.disabled = true;
@@ -35,13 +29,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const modelPromises = [
                 faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
                 faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-                bodyPix.load() // Tải mô hình BodyPix
+                bodyPix.load()
             ];
-
             loadingElement.innerText = "Đang tải hình ảnh...";
-            const createImagePromise = (image, src) => new Promise((resolve, reject) => {
-                image.src = src; image.crossOrigin = "Anonymous";
-                image.onload = resolve; image.onerror = reject;
+            const createImagePromise = (img, src) => new Promise((res, rej) => {
+                img.src = src; img.crossOrigin = "Anonymous";
+                img.onload = res; img.onerror = rej;
             });
             const imagePromises = [
                 createImagePromise(hatImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/birthdayhat.png'),
@@ -51,17 +44,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 createImagePromise(cakeLoseImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/cake.png'),
                 createImagePromise(backgroundImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/b.png')
             ];
-            
-            // Đợi tất cả mô hình và ảnh tải xong
             const [loadedModels] = await Promise.all([Promise.all(modelPromises), Promise.all(imagePromises)]);
-            bodyPixModel = loadedModels[2]; // Gán mô hình bodyPix đã tải
+            bodyPixModel = loadedModels[2];
             console.log("SUCCESS: All models and images are loaded!");
-            
             loadingElement.innerText = "Đang khởi động camera...";
             const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
             video.srcObject = stream;
             await new Promise(resolve => { video.onloadedmetadata = resolve; });
-            
             loadingElement.classList.add("hidden");
             startButton.disabled = false;
             video.play();
@@ -75,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     run();
 
     // ==========================================================
-    // VÒNG LẶP GAME (THÊM LOGIC TÁCH NỀN)
+    // VÒNG LẶP GAME (SỬA LẠI LOGIC VẼ)
     // ==========================================================
     async function gameLoop() {
         if (video.paused || video.ended || !bodyPixModel) {
@@ -86,23 +75,24 @@ document.addEventListener('DOMContentLoaded', () => {
             canvasElement.height = video.videoHeight;
         }
         
-        // --- BƯỚC 3.1: TÁCH NỀN ---
         const segmentation = await bodyPixModel.segmentPerson(video);
-        
-        // --- BƯỚC 3.2: VẼ LẠI MỌI THỨ THEO LỚP ---
-        // Lớp 1: Vẽ nền ảo
+        const mask = bodyPix.toMask(segmentation);
+
+        // --- BƯỚC 3.2 (ĐÃ SỬA): VẼ MỌI THỨ LÊN CANVAS CHÍNH ---
+        // Lớp 1: Vẽ nền ảo lên toàn bộ canvas
         canvasCtx.drawImage(backgroundImage, 0, 0, canvasElement.width, canvasElement.height);
-        
-        // Lớp 2: Chỉ vẽ người từ video lên trên nền ảo
-        const foreground = bodyPix.toMask(segmentation);
+
+        // Lớp 2: Vẽ "lỗ thủng" có hình người chơi lên nền
         canvasCtx.save();
-        canvasCtx.globalCompositeOperation = 'destination-in';
-        canvasCtx.drawImage(foreground, 0, 0, canvasElement.width, canvasElement.height);
-        canvasCtx.globalCompositeOperation = 'source-atop';
+        canvasCtx.globalCompositeOperation = 'destination-out';
+        canvasCtx.drawImage(mask, 0, 0, canvasElement.width, canvasElement.height);
+        
+        // Lớp 3: Vẽ hình ảnh video gốc vào đúng "lỗ thủng" đó
+        canvasCtx.globalCompositeOperation = 'destination-over';
         canvasCtx.drawImage(video, 0, 0, canvasElement.width, canvasElement.height);
         canvasCtx.restore();
-
-        // --- BƯỚC 3.3: CHẠY LOGIC GAME NHƯ CŨ ---
+        
+        // --- CHẠY LOGIC GAME NHƯ CŨ ---
         const detectorOptions = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 });
         const detections = await faceapi.detectAllFaces(video, detectorOptions).withFaceLandmarks();
         
@@ -120,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(gameLoop);
     }
     
-    // (Các hàm còn lại gần như giữ nguyên)
+    // (Các hàm còn lại giữ nguyên)
     function drawFaceElements(box, mouthCenter) {
         const flippedX = canvasElement.width - box.x - box.width;
         const hatWidth = box.width * 1.5;
