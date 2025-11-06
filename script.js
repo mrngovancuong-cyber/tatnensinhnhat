@@ -65,61 +65,69 @@ document.addEventListener('DOMContentLoaded', () => {
     run();
 
     // ==========================================================
-    // VÒNG LẶP GAME (VIẾT LẠI HOÀN TOÀN LOGIC VẼ)
-    // ==========================================================
-    async function gameLoop() {
-        if (video.paused || video.ended || !bodyPixModel) {
-            requestAnimationFrame(gameLoop); return;
-        }
-        if (canvasElement.width !== video.videoWidth) {
-            canvasElement.width = video.videoWidth;
-            canvasElement.height = video.videoHeight;
-        }
-        
-        // --- BƯỚC 1: NHẬN DIỆN MỌI THỨ ---
-        const segmentation = await bodyPixModel.segmentPerson(video);
-        const detectorOptions = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 });
-        const detections = await faceapi.detectAllFaces(video, detectorOptions).withFaceLandmarks();
-
-        // --- BƯỚC 2: VẼ NỀN ---
-        canvasCtx.drawImage(backgroundImage, 0, 0, canvasElement.width, canvasElement.height);
-        
-        // --- BƯỚC 3: VẼ NGƯỜI CHƠI LÊN TRÊN NỀN ---
-        // Tham số `false` nghĩa là không vẽ nền, chỉ vẽ người
-        // `1` là độ trong suốt (không mờ)
-        // `0` là độ làm mờ cạnh (không làm mờ)
-        bodyPix.drawMask(canvasElement, video, segmentation, 1, 0, false);
-        
-        // --- BƯỚC 4: CHẠY LOGIC & VẼ CÁC YẾU TỐ GAME LÊN TRÊN CÙNG ---
-        if (gameActive) {
-            if (detections && detections.length > 0) {
-                handleCollisions(detections[0].landmarks.positions[30]);
-            }
-            drawCandles();
-        }
-        
-        if (detections && detections.length > 0) {
-            drawFaceElements(detections[0].detection.box, detections[0].landmarks.positions[30]);
-        }
-        
-        requestAnimationFrame(gameLoop);
+// VÒNG LẶP GAME (SỬA LẠI LOGIC VẼ)
+// ==========================================================
+async function gameLoop() {
+    if (video.paused || video.ended || !bodyPixModel) {
+        requestAnimationFrame(gameLoop); return;
+    }
+    if (canvasElement.width !== video.videoWidth) {
+        canvasElement.width = video.videoWidth;
+        canvasElement.height = video.videoHeight;
     }
     
-    // (Các hàm còn lại không thay đổi)
-    function drawFaceElements(box, mouthCenter) {
-        const flippedX = canvasElement.width - box.x - box.width;
-        const hatWidth = box.width * 1.5;
-        const hatHeight = hatImage.height * (hatWidth / hatImage.width);
-        const hatX = flippedX - (hatWidth - box.width) / 2;
-        const hatY = box.y - hatHeight * 0.9;
-        canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
+    // --- BƯỚC 1: LẬT NGANG TOÀN BỘ CANVAS ---
+    canvasCtx.save();
+    canvasCtx.scale(-1, 1);
+    canvasCtx.translate(-canvasElement.width, 0);
+    
+    // --- BƯỚC 2: NHẬN DIỆN MỌI THỨ TỪ VIDEO GỐC (KHÔNG LẬT) ---
+    const segmentation = await bodyPixModel.segmentPerson(video);
+    const detectorOptions = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 });
+    const detections = await faceapi.detectAllFaces(video, detectorOptions).withFaceLandmarks();
 
-        const flippedMouthX = canvasElement.width - mouthCenter.x;
-        canvasCtx.beginPath();
-        canvasCtx.arc(flippedMouthX, mouthCenter.y, 5, 0, 2 * Math.PI);
-        canvasCtx.fillStyle = 'red';
-        canvasCtx.fill();
+    // --- BƯỚC 3: VẼ NỀN ---
+    // (Lưu ý: Nền cũng sẽ bị lật, nhưng với ảnh bokeh này thì không ảnh hưởng)
+    canvasCtx.drawImage(backgroundImage, 0, 0, canvasElement.width, canvasElement.height);
+    
+    // --- BƯỚC 4: VẼ NGƯỜI CHƠI ---
+    bodyPix.drawMask(canvasElement, video, segmentation, 1, 0, false);
+    
+    // --- BƯỚC 5: CHẠY LOGIC & VẼ GAME ---
+    if (gameActive) {
+        if (detections && detections.length > 0) {
+            handleCollisions(detections[0].landmarks.positions[30]);
+        }
+        drawCandles();
     }
+    
+    if (detections && detections.length > 0) {
+        drawFaceElements(detections[0].detection.box, detections[0].landmarks.positions[30]);
+    }
+
+    // --- BƯỚC 6: KHÔI PHỤC CANVAS VỀ TRẠNG THÁI BÌNH THƯỜNG ---
+    canvasCtx.restore();
+    
+    requestAnimationFrame(gameLoop);
+}
+
+// ==========================================================
+// CÁC HÀM VẼ (KHÔNG CẦN LẬT TỌA ĐỘ NỮA)
+// ==========================================================
+function drawFaceElements(box, mouthCenter) {
+    // const flippedX = canvasElement.width - box.x - box.width; // Bỏ
+    const hatWidth = box.width * 1.5;
+    const hatHeight = hatImage.height * (hatWidth / hatImage.width);
+    const hatX = box.x - (hatWidth - box.width) / 2;
+    const hatY = box.y - hatHeight * 0.9;
+    canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
+
+    // const flippedMouthX = canvasElement.width - mouthCenter.x; // Bỏ
+    canvasCtx.beginPath();
+    canvasCtx.arc(mouthCenter.x, mouthCenter.y, 5, 0, 2 * Math.PI);
+    canvasCtx.fillStyle = 'red';
+    canvasCtx.fill();
+}
     function drawCandles() { candles.forEach(c => canvasCtx.drawImage(c.image, c.x, c.y, c.width, c.height)); }
     function handleCollisions(mouthCenter) {
         candles.forEach((candle, index) => {
