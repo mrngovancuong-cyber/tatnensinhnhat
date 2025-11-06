@@ -45,15 +45,9 @@ body {
     position: absolute; top: 0; left: 0;
     width: 100%; height: 100%; border-radius: 5px;
 }
-#webcam {
-    /* transform: scaleX(-1); */ /* <-- XÓA HOẶC VÔ HIỆU HÓA DÒNG NÀY */
-    /* Chúng ta sẽ lật video bằng canvas để AI hoạt động chính xác */
-    opacity: 0; /* Ẩn video gốc đi, chỉ hiển thị canvas */
-}
-
-#output_canvas {
-    z-index: 10;
-}
+/* LẬT LẠI VIDEO BẰNG CSS, VÌ FACE-API HOẠT ĐỘNG TỐT VỚI NÓ */
+#webcam { transform: scaleX(-1); } 
+#output_canvas { z-index: 10; }
 
 #loading {
     position: absolute; top: 50%; left: 50%;
@@ -90,10 +84,7 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    /* ========================================================== */
-    /* THAY ĐỔI MÀU CHỮ                                         */
-    /* ========================================================== */
-    color: #E91E63; /* Màu hồng đỏ rực rỡ */
+    color: #E91E63;
     text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.7);
 }
 
