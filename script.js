@@ -19,19 +19,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let timeLeft = 60;
     let gameInterval, candleInterval;
     let candles = [];
-    let detections = [];
 
     const hatImage = new Image();
-    hatImage.src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/birthdayhat.png';
-    hatImage.crossOrigin = "Anonymous";
     const candleImages = [new Image(), new Image()];
-    candleImages[0].src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/candleb1.png';
-    candleImages[0].crossOrigin = "Anonymous";
-    candleImages[1].src = 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/candelb2.png';
-    candleImages[1].crossOrigin = "Anonymous";
 
     // ==========================================================
-    // BƯỚC 1: HÀM KHỞI TẠO CHÍNH
+    // KHỞI TẠO CHÍNH (ĐÃ ĐƯỢC XÁC MINH)
     // ==========================================================
     async function run() {
         try {
@@ -41,28 +34,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
                 faceapi.nets.faceLandmark68Net.loadFromUri('/models')
             ]);
-            console.log("AI Models Loaded!");
 
             loadingElement.innerText = "Đang tải hình ảnh...";
             const createImagePromise = (image, src) => new Promise((resolve, reject) => {
-                image.src = src;
-                image.crossOrigin = "Anonymous";
-                image.onload = resolve;
-                image.onerror = reject;
+                image.src = src; image.crossOrigin = "Anonymous";
+                image.onload = resolve; image.onerror = reject;
             });
             await Promise.all([
                 createImagePromise(hatImage, 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/birthdayhat.png'),
-                createImagePromise(candleImages[0], 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/candleb1.png'),
-                createImagePromise(candleImages[1], 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/refs/heads/main/candelb2.png')
+                createImagePromise(candleImages[0], 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/candleb1.png'),
+                createImagePromise(candleImages[1], 'https://raw.githubusercontent.com/mrngovancuong-cyber/image-data/main/candelb2.png')
             ]);
-            console.log("Images Loaded!");
 
             loadingElement.innerText = "Đang khởi động camera...";
             const stream = await navigator.mediaDevices.getUserMedia({ video: {} });
             video.srcObject = stream;
             await new Promise(resolve => { video.onloadedmetadata = resolve; });
-
-            // MỌI THỨ ĐÃ SẴN SÀNG!
+            
             loadingElement.classList.add("hidden");
             startButton.disabled = false;
             video.play();
@@ -75,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     run();
 
     // ==========================================================
-    // BƯỚC 2: VÒNG LẶP GAME
+    // VÒNG LẶP GAME
     // ==========================================================
     async function gameLoop() {
         if (video.paused || video.ended) {
@@ -87,38 +75,52 @@ document.addEventListener('DOMContentLoaded', () => {
             canvasElement.height = video.videoHeight;
         }
         const detectorOptions = new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.4 });
-        detections = await faceapi.detectAllFaces(video, detectorOptions).withFaceLandmarks();
+        const detections = await faceapi.detectAllFaces(video, detectorOptions).withFaceLandmarks();
         canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
         if (gameActive) {
             if (detections && detections.length > 0) {
-                const noseTip = detections[0].landmarks.positions[30];
-                handleCollisions(noseTip);
+                const mouthCenter = getMouthCenter(detections[0].landmarks);
+                handleCollisions(mouthCenter);
             }
             drawCandles();
         }
+        
         if (detections && detections.length > 0) {
             const face = detections[0];
-            drawFaceElements(face.detection.box, face.landmarks.positions[30]);
+            const mouthCenter = getMouthCenter(face.landmarks);
+            drawFaceElements(face.detection.box, mouthCenter);
         }
         requestAnimationFrame(gameLoop);
     }
+    
+    // ==========================================================
+    // MỤC TIÊU 1.1: Lấy điểm giữa miệng
+    // ==========================================================
+    function getMouthCenter(landmarks) {
+        const topLip = landmarks.positions[62]; // Điểm giữa môi trên
+        const bottomLip = landmarks.positions[66]; // Điểm giữa môi dưới
+        return {
+            x: (topLip.x + bottomLip.x) / 2,
+            y: (topLip.y + bottomLip.y) / 2
+        };
+    }
 
-    // ==========================================================
-    // CÁC HÀM VẼ VÀ LOGIC
-    // ==========================================================
-    function drawFaceElements(box, noseTip) {
+    // --- CÁC HÀM VẼ VÀ LOGIC ---
+    function drawFaceElements(box, mouthCenter) {
         const flippedX = canvasElement.width - box.x - box.width;
-        canvasCtx.strokeStyle = '#00FF00';
-        canvasCtx.lineWidth = 4;
-        canvasCtx.strokeRect(flippedX, box.y, box.width, box.height);
+        // MỤC TIÊU 1.3: Bỏ khung xanh (đã xóa dòng vẽ)
+        
         const hatWidth = box.width * 1.5;
         const hatHeight = hatImage.height * (hatWidth / hatImage.width);
         const hatX = flippedX - (hatWidth - box.width) / 2;
         const hatY = box.y - hatHeight * 0.9;
         canvasCtx.drawImage(hatImage, hatX, hatY, hatWidth, hatHeight);
-        const flippedNoseX = canvasElement.width - noseTip.x;
+
+        // Chấm đỏ giờ sẽ ở giữa miệng
+        const flippedMouthX = canvasElement.width - mouthCenter.x;
         canvasCtx.beginPath();
-        canvasCtx.arc(flippedNoseX, noseTip.y, 5, 0, 2 * Math.PI);
+        canvasCtx.arc(flippedMouthX, mouthCenter.y, 5, 0, 2 * Math.PI);
         canvasCtx.fillStyle = 'red';
         canvasCtx.fill();
     }
@@ -127,29 +129,52 @@ document.addEventListener('DOMContentLoaded', () => {
             canvasCtx.drawImage(candle.image, candle.x, candle.y, candle.width, candle.height);
         });
     }
-    function handleCollisions(noseTip) {
+    function handleCollisions(mouthCenter) {
         candles.forEach((candle, index) => {
-            const flippedNoseX = canvasElement.width - noseTip.x;
-            if (flippedNoseX > candle.x && flippedNoseX < candle.x + candle.width &&
-                noseTip.y > candle.y && noseTip.y < candle.y + candle.height) {
+            const flippedMouthX = canvasElement.width - mouthCenter.x;
+            if (flippedMouthX > candle.x && flippedMouthX < candle.x + candle.width &&
+                mouthCenter.y > candle.y && mouthCenter.y < candle.y + candle.height) {
                 candles.splice(index, 1);
                 score++;
                 scoreElement.innerText = score;
             }
         });
     }
+    
+    // ==========================================================
+    // MỤC TIÊU 1.2: Tối ưu hóa việc sinh nến
+    // ==========================================================
     function spawnCandle() {
         if (candles.length > 2) { candles.shift(); }
         const size = 80;
-        const x = Math.random() * (canvasElement.width - size - 100) + 50;
-        const y = Math.random() * (canvasElement.height - size - 100) + 50;
-        const randomImage = candleImages[Math.floor(Math.random() * candleImages.length)];
-        candles.push({ x, y, width: size, height: size, image: randomImage });
+        let newCandle;
+        let isOverlapping;
+        let maxTries = 10; // Giới hạn số lần thử để tránh vòng lặp vô tận
+
+        do {
+            isOverlapping = false;
+            const x = Math.random() * (canvasElement.width - size - 100) + 50;
+            const y = Math.random() * (canvasElement.height - size - 100) + 50;
+            newCandle = { x, y, width: size, height: size };
+
+            for (const existingCandle of candles) {
+                const distance = Math.hypot(newCandle.x - existingCandle.x, newCandle.y - existingCandle.y);
+                if (distance < size * 1.5) { // Nếu khoảng cách quá gần, coi như trùng lặp
+                    isOverlapping = true;
+                    break;
+                }
+            }
+            maxTries--;
+        } while (isOverlapping && maxTries > 0);
+        
+        if (!isOverlapping) {
+             const randomImage = candleImages[Math.floor(Math.random() * candleImages.length)];
+             newCandle.image = randomImage;
+             candles.push(newCandle);
+        }
     }
 
-    // ==========================================================
-    // CÁC HÀM QUẢN LÝ GAME
-    // ==========================================================
+    // --- CÁC HÀM QUẢN LÝ GAME ---
     function startGame() {
         score = 0; timeLeft = 60; candles = [];
         scoreElement.innerText = score; timerElement.innerText = timeLeft;
@@ -167,8 +192,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         candleInterval = setInterval(() => {
             if (gameActive) spawnCandle();
-        }, 2000);
+        }, 2500); // Thay đổi từ 2000ms
     }
+
     function endGame() {
         gameActive = false;
         clearInterval(gameInterval);
